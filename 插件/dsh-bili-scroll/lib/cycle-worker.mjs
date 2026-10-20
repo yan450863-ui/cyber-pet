@@ -8,7 +8,7 @@ import { petPrompt, textLimit } from './pet-profile.mjs'
 import { withinHours } from './cycle.mjs'
 import { excerpt, videoBrief, threadBrief, modelInput, asksAboutVideo } from './reading.mjs'
 import { ACTIVITY_DEFAULTS, addUsage, budgetBlocked, todayUsage, threadKey, relevantMemories, contentFilter, keywordWeight, maintainFiles } from './activity.mjs'
-import { BROWSE_DEFAULTS, browseGate, browsePrompt, browseSignature, videoType, typePreference } from './browse-preferences.mjs'
+import { BROWSE_DEFAULTS, browseGate, browsePrompt, browseSignature, videoType, typePreference, recentCandidate, comparePopularity } from './browse-preferences.mjs'
 
 export function decisionOf(raw) {
   if (!raw || typeof raw !== 'object' || !['skip', 'reply', 'read_video'].includes(raw.action)) throw new Error('模型未生成有效的行动判断')
@@ -96,7 +96,7 @@ export function createCycleWorker({ home, config, call, resolveDsh, log, env, de
     if (group === 'video') {
       const keywords = config().keywords?.filter(Boolean).length ? [...new Set(config().keywords.filter(Boolean))] : ['人工智能', '大模型', '二次元', '动画']
       const weighted = keywords.flatMap((word, index) => Array(Math.min(10, Math.max(0, keywordWeight(word, settings())))).fill(index))
-      const signature = JSON.stringify([keywords, weighted, settings().browsePreferredUids,settings().browseBlockedUids,settings().browseAuthorMode,settings().browseFeedback,settings().browseTypes])
+      const signature = JSON.stringify([keywords, weighted, browseSignature(settings()), new Date().toISOString().slice(0,10)])
       if (f.searchSignature !== signature) {
         f.searchSignature = signature; f.searches = keywords.map(() => ({ page: 1, videos: [], exhausted: false }))
         f.videos = []; delete f.page; delete f.keyword; delete f.activeVideo; delete f.activeKeyword
@@ -106,15 +106,16 @@ export function createCycleWorker({ home, config, call, resolveDsh, log, env, de
         if (!weighted.length) return null
         const index = weighted[(ledger.nextKeyword || 0) % weighted.length], bucket = f.searches[index]
         bucket.videos = bucket.videos.filter(v => !ledger.seen['video:' + v.bvid])
-        while (!bucket.videos.length && !bucket.exhausted) {
-          const result = check(await call('bili_search', { keyword: keywords[index], num: 50, order: 'pubdate', page: bucket.page }))
+        let pagesFetched=0
+        while (!bucket.videos.length && !bucket.exhausted && pagesFetched++<3) {
+          const result = check(await call('bili_search', { keyword: keywords[index], num: 50, order: settings().browseOrder==='recent_hot'?'click':settings().browseOrder, days:settings().browseDays, page: bucket.page }))
           signal.throwIfAborted()
           if (!Array.isArray(result?.videos)) throw new Error('搜索结果格式不正确')
           bucket.page++; bucket.exhausted = !result.has_more || !result.videos.length
           const preferred = settings().preferredAuthors
           const score=v=>(settings().browsePreferredUids.includes(String(v.author_uid))?10:0)+(preferred.includes(v.author)?5:0)+(typePreference(settings(),videoType(v))==='more'?3:typePreference(settings(),videoType(v))==='less'?-3:0)
-          bucket.videos = result.videos.filter(v => v.bvid && !ledger.seen['video:' + v.bvid])
-            .sort((a, b) => score(b)-score(a))
+          bucket.videos = result.videos.filter(v => v.bvid && !ledger.seen['video:' + v.bvid] && recentCandidate(v,settings()))
+            .sort((a, b) => score(b)-score(a)||comparePopularity(a,b,settings()))
           save()
         }
         if (bucket.videos[0]) {

@@ -329,3 +329,14 @@ test('独立消息组每次空队列重新取通知，使用真实根楼层发�
   assert.equal(ledger.sent['message:BV1111111111:42'].root, 40)
   assert.match(readFileSync(join(f.home, 'seen.md'), 'utf8'), /40/)
 })
+
+test('近期热门搜索传入时间范围与播放排序，过滤旧视频后优先新鲜候选且不发布',async t=>{
+ const f=setup(t),now=Math.floor(Date.now()/1000);Object.assign(f.cfg,{keywords:['Claude 拟人'],browseDays:30,browseOrder:'recent_hot',browseFreshDays:7,browseTypes:['日常','其他'],autoComment:false})
+ const call=f.options.call;let searchArgs
+ f.options.call=async(name,args)=>{if(name==='bili_search'){searchArgs=args;return {has_more:false,videos:[{bvid:'BV1111111111',title:'Claude 拟人',pubdate:now-31*86400,play:999999},{bvid:'BV2222222222',title:'Claude 拟人',pubdate:now-10*86400,play:10000},{bvid:'BV3333333333',title:'Claude 拟人',pubdate:now-86400,play:1000}]}}return call(name,args)}
+ f.options.decide=async()=>({action:'skip',summary:'只读验证',videoType:'日常',interest:'match',interestEvidence:true})
+ const w=createCycleWorker(f.options);await w.step('video',{signal:f.signal,round:1})
+ assert.equal(searchArgs.order,'click');assert.equal(searchArgs.days,30)
+ assert.equal(w.status().activity[0].bvid,'BV3333333333')
+ assert.equal(f.calls.some(c=>c.name==='bili_reply'),false)
+})

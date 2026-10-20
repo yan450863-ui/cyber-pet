@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { Cycle, CYCLE_DEFAULTS, normalizeCycle } from './lib/cycle.mjs'
 import { createCycleWorker } from './lib/cycle-worker.mjs'
 import { ACTIVITY_DEFAULTS } from './lib/activity.mjs'
-import { BROWSE_DEFAULTS, BROWSE_PRESETS, VIDEO_TYPES, normalizeBrowse, feedbackEntries } from './lib/browse-preferences.mjs'
+import { BROWSE_DEFAULTS, BROWSE_PRESETS, VIDEO_TYPES, normalizeBrowse, feedbackEntries, presetPatch } from './lib/browse-preferences.mjs'
 import { MEME_DEFAULTS, normalizeMemes, listMemes, importMeme } from './lib/memes.mjs'
 import { PetStore } from './lib/pets.mjs'
 import { createPetChat } from './lib/pet-chat.mjs'
@@ -154,8 +154,7 @@ export function apply(ctx, config) {
   const clampPatch = patch => {
     const p = { ...patch }
     if(BROWSE_PRESETS[p.browsePreset]){
-      if(!('keywords' in p))p.keywords=BROWSE_PRESETS[p.browsePreset].keywords
-      if(!('browseTypes' in p))p.browseTypes=BROWSE_PRESETS[p.browsePreset].types
+      for(const [key,value] of Object.entries(presetPatch(p.browsePreset)))if(!(key in p))p[key]=value
     }
     const browse=normalizeBrowse(p)
     for(const key of Object.keys(BROWSE_DEFAULTS))if(key in p)p[key]=browse[key]
@@ -907,7 +906,7 @@ export function apply(ctx, config) {
       if (body.petId !== pets.activeId) throw Error('宠物已切换，请刷新后再发消息')
       return sendJson(res, 200, { ok: true, job: petChat.start(body.text) })
     }
-    if(req.method==='GET' && path==='/api/bili-duty/browse-options')return sendJson(res,200,{ok:true,presets:BROWSE_PRESETS,types:VIDEO_TYPES})
+    if(req.method==='GET' && path==='/api/bili-duty/browse-options')return sendJson(res,200,{ok:true,presets:Object.fromEntries(Object.entries(BROWSE_PRESETS).map(([id,p])=>[id,{...p,config:presetPatch(id)}])),types:VIDEO_TYPES})
     if(req.method==='POST' && path==='/api/bili-duty/pets/browse-feedback'){
       const body=await readBody(req)
       if(body.petId!==pets.activeId)throw Error('宠物已切换，请刷新后重试')

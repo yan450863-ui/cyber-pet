@@ -76,8 +76,9 @@ window.__ModuleLoader__.load({
         const cfg = { ...draft, keywords: String(draft.keywords || '').split('\n').map(s => s.trim()).filter(Boolean) }
         for (const key of ['excludedWords', 'preferredAuthors','browsePreferredUids','browseBlockedUids']) cfg[key] = String(draft[key] || '').split('\n').map(s => s.trim()).filter(Boolean)
         for(const key of ['browsePreferredUids','browseBlockedUids'])if(cfg[key].some(v=>!/^\d{1,20}$/.test(v)||Number(v)<=0))throw Error('UP列表请填写数字UID，一行一个')
+        if(Number(cfg.browseDays)>365||Number(cfg.browseFreshDays)>365)throw Error('时间范围须为0—365天')
         if(Number(cfg.browseExplorationPercent)>100)throw Error('探索比例须为0—100')
-        for (const key of ['browseExplorationPercent','memeChance', 'memeMaxCount', 'memeCooldownSec', 'maxCommentChars', 'maxReplyChars', 'videoCount', 'videoIntervalSec', 'messagesCount', 'messagesIntervalSec', 'restMinutes', 'maxRounds', 'cooldownSec', 'dailyTokenBudget', 'replyReserveTokens', 'maxThreadReplies', 'cacheMinutes', 'retentionDays', 'aiWeight', 'llmWeight', 'animeWeight', 'animationWeight']) {
+        for (const key of ['browseDays','browseFreshDays','browseExplorationPercent','memeChance', 'memeMaxCount', 'memeCooldownSec', 'maxCommentChars', 'maxReplyChars', 'videoCount', 'videoIntervalSec', 'messagesCount', 'messagesIntervalSec', 'restMinutes', 'maxRounds', 'cooldownSec', 'dailyTokenBudget', 'replyReserveTokens', 'maxThreadReplies', 'cacheMinutes', 'retentionDays', 'aiWeight', 'llmWeight', 'animeWeight', 'animationWeight']) {
           const n = Number(cfg[key])
           if (cfg[key] === '' || !Number.isInteger(n) || n < (key.endsWith('IntervalSec') || ['cooldownSec', 'retentionDays'].includes(key) ? 1 : 0) || n > 100000000) throw new Error('请填写有效整数；间隔及保留天数至少1，休息0表示不休息')
           cfg[key] = n
@@ -144,10 +145,14 @@ window.__ModuleLoader__.load({
           st.budget?.video ? h('div', null, '浏览预算已用完；消息按剩余额度继续。') : null,
           st.budget?.messages ? h('div', null, '今日总预算已用完，等待次日恢复。') : null),
         h('section', null, h('h3', null, '浏览口味（与人设分开保存）'),
-          h('label',null,'口味预设',h('select',{value:draft.browsePreset||'custom',onChange:e=>{const id=e.target.value,p=browseOptions?.presets[id];setDraft(old=>({...old,browsePreset:id,...(p?{keywords:p.keywords.join('\n'),browseTypes:p.types}: {})}))}},h('option',{value:'custom'},'自定义 / 保留现有设置'),...Object.entries(browseOptions?.presets||{}).map(([id,p])=>h('option',{key:id,value:id},p.name)))),
+          h('label',null,'口味预设',h('select',{value:draft.browsePreset||'custom',onChange:e=>{const id=e.target.value,p=browseOptions?.presets[id];setDraft(old=>({...old,browsePreset:id,...(p?{...p.config,keywords:p.keywords.join('\n')}: {})}))}},h('option',{value:'custom'},'自定义 / 保留现有设置'),...Object.entries(browseOptions?.presets||{}).map(([id,p])=>h('option',{key:id,value:id},p.name)))),
           h('div',{'data-bd-actions':''},...browseTypes.map(type=>h('label',{key:type},h('input',{type:'checkbox',checked:(draft.browseTypes||browseTypes).includes(type),onChange:e=>setDraft(old=>({...old,browsePreset:'custom',browseTypes:e.target.checked?[...(old.browseTypes||browseTypes),type]:(old.browseTypes||browseTypes).filter(v=>v!==type)}))}),type))),
           h('label',null,'筛选严格度',h('select',{value:draft.browseStrictness||'standard',onChange:e=>edit('browseStrictness',e.target.value)},...Object.entries({loose:'宽松：允许间接相关',standard:'标准：主体相关',strict:'严格：主体高度相关且有证据'}).map(([v,label])=>h('option',{key:v,value:v},label)))),
           num('browseExplorationPercent','探索比例（0—100%，默认0）'),
+          h('label',null,'主题要求（独立于人设，可修改）',h('textarea',{rows:3,value:draft.browseTopic||'',onChange:e=>edit('browseTopic',e.target.value)})),
+          num('browseDays','发布时间范围（天，0不限，最多365）'),
+          h('label',null,'视频排序',h('select',{value:draft.browseOrder||'pubdate',onChange:e=>edit('browseOrder',e.target.value)},...Object.entries({pubdate:'最新发布',recent_hot:'近期热门：范围内按播放搜索，候选内兼顾互动和新鲜度',click:'热门优先',totalrank:'综合相关'}).map(([v,label])=>h('option',{key:v,value:v},label)))),
+          num('browseFreshDays','近期热门：优先最近几天（0不优先，最多365）'),
           h('label',null,'UP范围',h('select',{value:draft.browseAuthorMode||'prefer',onChange:e=>edit('browseAuthorMode',e.target.value)},h('option',{value:'prefer'},'优先看这些UP'),h('option',{value:'only'},'只看这些UP'))),
           h('label',null,'优先 / 只看UP UID（一行一个数字UID）',h('textarea',{rows:2,value:draft.browsePreferredUids||'',onChange:e=>edit('browsePreferredUids',e.target.value)})),
           h('label',null,'屏蔽UP UID（一行一个）',h('textarea',{rows:2,value:draft.browseBlockedUids||'',onChange:e=>edit('browseBlockedUids',e.target.value)})),

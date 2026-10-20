@@ -20,6 +20,8 @@ import base64
 import os
 import sys
 import tempfile
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import re
 from pathlib import Path
 from mcp.server.fastmcp import FastMCP
@@ -265,7 +267,7 @@ async def bili_check_credential() -> str:
 # ========== Tool 1: 搜索视频 ==========
 
 @tool()
-async def bili_search(keyword: str, num: int = 10, order: str = "totalrank", page: int = 1) -> str:
+async def bili_search(keyword: str, num: int = 10, order: str = "totalrank", page: int = 1, days: int = 0) -> str:
     """
     搜索B站视频
 
@@ -285,12 +287,16 @@ async def bili_search(keyword: str, num: int = 10, order: str = "totalrank", pag
     }
     order_enum = order_map.get(order, search.OrderVideo.TOTALRANK)
 
+    days = max(0, min(int(days), 365))
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    window = {"time_start": (today - timedelta(days=days)).isoformat(), "time_end": (today + timedelta(days=1)).isoformat()} if days else {}
     result = await search.search_by_type(
         keyword=keyword,
         search_type=search.SearchObjectType.VIDEO,
         page=max(1, page),
         page_size=max(1, min(num, 50)),
         order_type=order_enum,
+        **window,
     )
 
     videos = []
@@ -302,6 +308,7 @@ async def bili_search(keyword: str, num: int = 10, order: str = "totalrank", pag
             "title": title,
             "author": item.get("author", ""),
             "author_uid": str(item.get("mid") or ""),
+            "pubdate": item.get("pubdate", 0),
             "play": item.get("play", 0),
             "review": item.get("review", 0),
             "danmaku": item.get("video_review", 0),
