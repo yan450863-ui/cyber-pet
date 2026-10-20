@@ -32,7 +32,7 @@ writeFileSync(join(stage, '使用说明.txt'), '\ufeff赛博小宠物 Windows x6
 console.log(repack ? 'Checking and repacking clean staging directory.' : 'Copied clean application; installing Bili dependencies into bundled Python.');
 const pythonRoot = join(stage, 'resources/runtime/x64/primary-runtime/dependencies/python');
 const builderPython = join(root, 'resources/runtime/x64/primary-runtime/dependencies/python/python.exe');
-const pipMain = `import sys,runpy; sys.path.insert(0, ${JSON.stringify(join(root, '数据/bili-duty/.venv/Lib/site-packages'))}); runpy.run_module('pip',run_name='__main__')`; 
+const pipMain = `import sys,runpy; sys.path.insert(0, ${JSON.stringify(join(root, '数据/bili-duty/.venv/Lib/site-packages'))}); runpy.run_module('pip',run_name='__main__')`;
 const pip = repack ? { status: 0 } : spawnSync(builderPython, ['-c', pipMain, 'install', '--disable-pip-version-check', '--no-compile', '--upgrade', '--target', join(pythonRoot, 'Lib/site-packages'), '-r', join(root, '插件/dsh-bili-scroll/vendor/bilibili-mcp/requirements.txt')], { stdio: 'inherit', windowsHide: true });
 if (pip.status !== 0) throw Error('Clean Python dependency installation failed');
 const python = join(pythonRoot, 'python.exe');

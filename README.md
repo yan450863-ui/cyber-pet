@@ -17,7 +17,7 @@
 
 ## 当前发布内容
 
-这是**源码及桌面壳定制文件仓库**，不是完整 DSH 源码镜像。已制作本地Windows x64便携预览ZIP，尚未上传GitHub Release；直接下载仓库仍是源码。
+这是**源码及桌面壳定制文件仓库**，不是完整 DSH 源码镜像。Windows x64便携预览包已发布：[下载程序与使用说明](https://github.com/yan450863-ui/cyber-pet/releases/tag/preview-2026-10-20)。请下载Release附件中的cyber-pet-windows-x64-2026-10-20-preview.zip（约382 MB）；直接下载仓库或Source code仍是源码。
 
 | 位置 | 内容 |
 | --- | --- |
@@ -50,7 +50,7 @@
 
 ## 便携预览包
 
-已生成的本地ZIP完整解压后，双击DSH Desktop.exe；Node、Python及主B站依赖随包携带。首次打开只创建默认deepseek，阅读说明后自行配置API、扫码登录并开启需要的功能。自动评论与回复默认关闭。
+从[GitHub Release](https://github.com/yan450863-ui/cyber-pet/releases/tag/preview-2026-10-20)下载ZIP，完整解压后，双击DSH Desktop.exe；Node、Python及主B站依赖随包携带。首次打开只创建默认deepseek，阅读说明后自行配置API、扫码登录并开启需要的功能。自动评论与回复默认关闭。
 
 便携模式由包根pet-portable.json标记启用；全部运行数据和桌面缓存留在包内“数据”，移动文件夹前退出程序，分享时不要带上自己的数据。API未配置前不启用默认模型，保存后重启生效。
 
