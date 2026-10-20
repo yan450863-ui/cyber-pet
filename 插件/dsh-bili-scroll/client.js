@@ -356,18 +356,17 @@ window.__ModuleLoader__.load({
     }
 
     /* PET SHELL END */
-    function ChatPanel() {
-      const [open, setOpen] = React.useState(false)
-      return h('div', { 'data-bd-dock': '' },
-        h('button', { onClick: () => setOpen(!open), 'aria-expanded': open, 'aria-label': '刷 B站设置' }, '刷 B站 ' + (open ? '▴' : '▾')),
-        open ? h('div', { 'data-bd-dock-body': '' }, h(Panel)) : null)
-    }
     return { inject: ['slots'], apply(ctx) {
       const style = document.createElement('style'); style.setAttribute('data-plugin-css', 'dsh-bili-scroll'); style.textContent = CSS
       document.head.appendChild(style); ctx.effect(() => () => style.remove(), 'bili-scroll: 样式')
       const slots = ctx.get?.('slots') || ctx.slots
       if (!slots) return
-      slots.inject('settings.section', () => slots.register({ name: 'settings.section', id: 'bili-scroll', order: 30, label: '刷 B站' }, () => h(Panel)))
+      // The renderer has an optional session scope. Pet chats own their state;
+      // expose an empty binding instead of mounting DSH's conversation controller.
+      if (typeof slots.installScope === 'function') slots.installScope('session', {
+        current: { getSnapshot: () => undefined, subscribe: () => () => {} },
+        resolve: () => undefined,
+      })
       slots.inject('root', () => slots.register({ name: 'root', id: 'pet-shell', priority: -100 }, PetShell))
     } }
   },

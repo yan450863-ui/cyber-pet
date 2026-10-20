@@ -78,6 +78,7 @@ async function runDesktopDshCli(environment = process.env, load = (url) => impor
 	const selected = profileName === void 0 ? argv.slice(2) : withDefaultDesktopProfile(argv.slice(2), profileName);
 	argv.splice(2, argv.length - 2, ...withoutForwardedDesktopPnpmPolicy(selected));
 	const selectedProfile = selectedDesktopCliProfile(argv.slice(2));
+	if(selectedProfile === "headless") argv.splice(2,0,"--patch",fileURLToPath(new URL("./pet-headless.patch.json",import.meta.url)));
 	const releaseResolver = selectedProfile !== void 0 && /([\\/])app\.asar\1/u.test(fileURLToPath(DSH_ENTRY_URL)) ? installProfilePackageResolver(desktopCliProfileManifestUrl(selectedProfile, environment)) : void 0;
 	if (releaseResolver === void 0) {
 		await (await load(DSH_ENTRY_URL)).runCli({ manageDesktopProfile: true });

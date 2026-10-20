@@ -6,7 +6,7 @@
 
 Source: https://github.com/anywhere-labs/dsh-desktop
 
-Published runtime overrides: resources/app/lib/main.js, desktop-cli.js, electron-runtime-Be7e-XQ5.js, native-ui/assets/compatibility-chrome-Bw7hoNWH.js.
+Published runtime overrides: resources/app/package.json and resources/app/lib/{main.js, desktop-cli.js, electron-runtime-Be7e-XQ5.js, client.js, profile-BePNPvSL.js, profile-channel-admission-BCSNO_nW.js, host-process-entry.js, native-ui/assets/compatibility-chrome-Bw7hoNWH.js}. New pet runtime policy and pruning tools are local contributions.
 
 MIT License
 

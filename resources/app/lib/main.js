@@ -4898,13 +4898,8 @@ async function start() {
 				}
 				installAgentErrorLogging(hostCtx);
 				installHostDeveloperLogging(hostCtx);
-				const office = resolveDesktopOfficeConfig(primaryRuntime, homeDir);
-				if (office === void 0) hostCtx.logger.warn(`${BIN_NAME}: Office skills are unavailable; run yarn prepare:runtime to prepare the primary runtime`);
-				else {
-					await hostCtx.plugin(desktop_office_exports, office);
-					hostCtx.logger.info(`${BIN_NAME}: Office skills mounted from ${office.source}`);
-				}
-				await hostCtx.plugin(DesktopProfileService, {
+				// Pet runtime does not mount Office authoring or its bundled dependencies.
+		await hostCtx.plugin(DesktopProfileService, {
 					current: {
 						name: activeProfileName,
 						dir: prepared.profile.dir

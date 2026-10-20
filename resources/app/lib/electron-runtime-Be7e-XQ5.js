@@ -4319,59 +4319,14 @@ var ElectronDesktopRuntime = class {
 		});
 	}
 	buildTrayTemplate(spec) {
-		const show = () => {
-			this.show();
-		};
-		const changeMode = (mode) => {
-			if (!this.platformStrategy.canToggleShellMode || mode === spec.mode) return;
-			spec.requestModeChange(mode).catch((cause) => {
-				this.logError(`dsh-plugin-desktop: failed to change shell mode: ${cause instanceof Error ? cause.message : String(cause)}`);
-			});
-		};
-		const tools = this.contributedTrayItems("tools");
-		const profiles = this.contributedTrayItems("profiles");
-		const status = this.contributedTrayItems("status");
-		const reloadRenderer = () => {
-			try {
-				this.generation?.requestRendererReload();
-			} catch (cause) {
-				this.logError(`dsh-plugin-desktop: failed to reload the renderer from the tray: ${cause instanceof Error ? cause.message : String(cause)}`);
-			}
-		};
-		const template = [{
-			label: desktopTrayLabel(this.locale, "openDesktop", spec.productName),
-			click: show
-		}, {
-			label: desktopTrayLabel(this.locale, "reloadRenderer"),
-			click: reloadRenderer
-		}];
-		if (tools.length > 0) template.push({ type: "separator" }, ...tools);
-		if (profiles.length > 0) template.push({ type: "separator" }, ...profiles);
-		if (status.length > 0) template.push({ type: "separator" }, ...status);
-		template.push({ type: "separator" }, {
-			label: desktopTrayLabel(this.locale, "shellMode", desktopTrayLabel(this.locale, spec.mode)),
-			enabled: this.platformStrategy.canToggleShellMode,
-			submenu: [
-				"compatibility",
-				"extended",
-				"advanced"
-			].map((mode) => ({
-				label: desktopTrayLabel(this.locale, mode),
-				type: "radio",
-				checked: mode === spec.mode,
-				enabled: this.platformStrategy.canToggleShellMode,
-				click: () => {
-					changeMode(mode);
-				}
-			}))
-		}, { type: "separator" }, {
-			label: desktopTrayLabel(this.locale, "quit"),
-			click: () => {
-				spec.requestQuit(0);
-			}
-		});
-		return template;
-	}
+    return [
+      {label:desktopTrayLabel(this.locale,"openDesktop",spec.productName),click:()=>this.show()},
+      {label:desktopTrayLabel(this.locale,"reloadRenderer"),click:()=>this.generation?.requestRendererReload()},
+      {type:"separator"},
+      {label:desktopTrayLabel(this.locale,"quit"),click:()=>spec.requestQuit(0)},
+    ];
+  }
+
 	rebuildTrayMenu() {
 		if (this.scheduled === void 0) return;
 		this.generation?.refreshTrayMenu();

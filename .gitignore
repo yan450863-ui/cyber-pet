@@ -8,6 +8,7 @@
 !/THIRD_PARTY_NOTICES.md
 !/ABOUT.md
 !/PROJECT.md
+!/工具/
 !/插件/
 /插件/*
 !/插件/ABOUT.md
@@ -16,11 +17,18 @@
 /resources/*
 !/resources/app/
 /resources/app/*
+!/resources/app/package.json
 !/resources/app/lib/
 /resources/app/lib/*
 !/resources/app/lib/main.js
 !/resources/app/lib/desktop-cli.js
 !/resources/app/lib/electron-runtime-Be7e-XQ5.js
+!/resources/app/lib/client.js
+!/resources/app/lib/profile-BePNPvSL.js
+!/resources/app/lib/profile-channel-admission-BCSNO_nW.js
+!/resources/app/lib/host-process-entry.js
+!/resources/app/lib/pet-runtime-policy.js
+!/resources/app/lib/pet-headless.patch.json
 !/resources/app/lib/native-ui/
 /resources/app/lib/native-ui/*
 !/resources/app/lib/native-ui/assets/

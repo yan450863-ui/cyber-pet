@@ -7,7 +7,7 @@
 ## 上游与混合文件
 
 - `插件/dsh-bili-scroll/` 基于 c1overzz/dsh-bili-scroll；其原有代码仍按 MIT 许可。原有许可和版权声明保存在插件的 `LICENSE` 中。
-- `resources/app/lib/` 下收录的四个桌面壳文件是 DSH Desktop 2.0.18 的定制运行时文件。DSH Desktop 原有内容采用 MIT；新增、修改部分采用本项目的非商用许可。它们依赖完整的对应版本桌面程序，不是完整上游源码。
+- `resources/app/lib/` 下收录的桌面壳定制文件是 DSH Desktop 2.0.18 的定制运行时文件。DSH Desktop 原有内容采用 MIT；新增、修改部分采用本项目的非商用许可。新增的pet-runtime-policy.js、pet-headless.patch.json以及工具目录按本项目许可提供。这些文件依赖完整的对应版本桌面程序，不是完整上游源码。
 - `插件/dsh-bili-scroll/vendor/bilibili-mcp/` 的上游原有代码采用 MIT，版权归 AGI_Ananas；原文保存在该目录的 `LICENSE`。本项目对桥接的新增、修改部分按本项目非商用许可发布。
 - 完整第三方版权与 MIT 文本见 `THIRD_PARTY_NOTICES.md`；其他单独带许可的第三方材料保留其原有条款。
 

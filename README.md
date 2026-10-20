@@ -22,7 +22,7 @@
 | 位置 | 内容 |
 | --- | --- |
 | `插件/dsh-bili-scroll/` | B站插件、宠物界面、人设、调度、测试和Python桥接源码 |
-| `resources/app/lib/` | 与 DSH Desktop **2.0.18** 配套的四个定制运行时文件 |
+| `resources/app/lib/` | 与 DSH Desktop **2.0.18** 配套的精简后的桌面壳定制文件及启动策略 |
 | `PROJECT.md` | 当前实现状态和接手说明 |
 | `ABOUT.md` | 本地项目目录导航 |
 
@@ -33,7 +33,7 @@
 目前面向有开发经验的用户，基于 Windows、DSH Desktop 2.0.18、Node.js 22+。原项目：[DSH Desktop](https://github.com/anywhere-labs/dsh-desktop)。请自行从上游获取对应版本的完整桌面程序。
 
 1. 克隆本仓库。在一个独立的 DSH Desktop 2.0.18 安装目录中操作，并先关闭该程序。当前版本的定制文件不能直接用于其他版本。
-2. 将本仓库 `resources/app/lib/` 下的四个文件按相同相对路径覆盖到安装目录。其余桌面壳文件和依赖使用完整上游安装提供的版本；本仓库不包含它们。
+2. 将本仓库 `resources/app/` 下的已跟踪文件（含package.json）按相同相对路径覆盖到安装目录。其余桌面壳文件和依赖使用完整上游安装提供的版本；本仓库不包含它们。
 3. 插件目录保留在本地；在 DSH CLI 中将该目录作为本地 bundle 加到 desktop profile，例如：
 
    ```powershell
@@ -48,6 +48,14 @@
 
 这份源码版安装说明没有经过另一台全新电脑的端到端安装验收，正式一键安装包仍待制作；不要把“源码公开”当作已有可直接分发的安装包。
 
+## 已实施的精简
+
+桌面启动只挂载64个活动组件。插件市场、通用对话界面、文件/浏览器/终端侧栏、Office预览与创作、多代理、目标/计划/工作流工具、原计划任务和自动更新入口已移除；保留模型、凭证、设置、插件装载、会话执行、受限文件读写、窗口、渲染、主题与认证传输底层。宠物聊天使用自己的状态，原DSH前端会话控制器不再挂载。
+
+已清除100个独立依赖及6583个source map，共约490 MB。共享底层代码仍引用的模块保留，Node/Python运行环境与个人数据不清理。移除DSH原自动更新后，升级应按本项目发布说明进行，避免覆盖定制文件。
+
+策略见 `resources/app/lib/pet-runtime-policy.js`；后台任务由desktop-cli加载 `pet-headless.patch.json`。装好定制文件后，把“工具”目录放到安装根目录，执行 `node 工具/slim-runtime.mjs` 预览，确认目标为该安装后加 `--apply` 清理；`--details` 可查看包名。工具仅适用于当前版本布局，不清理个人数据。不要在只有源码而没有完整DSH依赖的克隆目录中执行清理。
+
 ## 开发与验证
 
 在 `插件/dsh-bili-scroll/` 下运行：
@@ -56,10 +64,10 @@
 node build-client.mjs
 node --check client.js
 node selfcheck.mjs
-node --test lib/browse-preferences.test.mjs lib/pets.test.mjs lib/pets-api.test.mjs lib/api-connection.test.mjs lib/cycle.test.mjs lib/operations.test.mjs lib/memes-python.test.mjs
+node --test lib/runtime-policy.test.mjs lib/browse-preferences.test.mjs lib/pets.test.mjs lib/pets-api.test.mjs lib/api-connection.test.mjs lib/cycle.test.mjs lib/operations.test.mjs lib/memes-python.test.mjs
 ```
 
-本地定制环境已有46项测试通过。Python桥接测试需要可用的Python及对应依赖；插件README说明运行环境。测试使用临时数据，不会公开发评论。
+本地定制环境已有49项测试通过；精简后真实模型的受限文件读写及B站登录/搜索均已验证。Python桥接测试需要可用的Python及对应依赖；插件README说明运行环境。测试使用临时数据，不会公开发评论。
 
 ## 使用说明与限制
 

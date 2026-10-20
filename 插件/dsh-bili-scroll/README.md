@@ -111,10 +111,14 @@
 - `lib/api-connection.mjs`：API表单读取、只读测试、两profile配置及凭证保存。
 - `lib/api-connection.test.mjs`：连接配置和密钥隔离测试；宠物相关测试见 `lib/pets*.test.mjs`。
 
+## 精简环境
+
+宠物界面直接依赖ui-renderer，提供空的原DSH可选会话范围，聊天状态由宠物档案管理；不再注册原设置侧栏或重复聊天面板。桌面载体仅保留启动健康上报。桌面启动策略与headless工具剔除表见仓库resources/app/lib/pet-runtime-policy.js、pet-headless.patch.json。
+
 ## 验证
 
-在插件目录运行 `node selfcheck.mjs` 和 `node --test lib/browse-preferences.test.mjs lib/pets.test.mjs lib/pets-api.test.mjs lib/api-connection.test.mjs lib/cycle.test.mjs lib/operations.test.mjs lib/memes-python.test.mjs`。
+在插件目录运行 `node selfcheck.mjs` 和 `node --test lib/runtime-policy.test.mjs lib/browse-preferences.test.mjs lib/pets.test.mjs lib/pets-api.test.mjs lib/api-connection.test.mjs lib/cycle.test.mjs lib/operations.test.mjs lib/memes-python.test.mjs`。
 
-46 项模拟测试覆盖调度、手动跳过休息、0 分钟轮休、独立消息轮询、重复校验幂等、预算、缓存、消息合并、楼层限额、统一发送、用量采集与文件维护；测试不公开发言。真实 WorkBuddy 已验证宿主用量采集，可取得模型实报 Token。真实 WorkBuddy 判断落盘、收件箱、搜索和目标楼层已验证；实际循环累计有 4 条接口接受回执，自动复核均在当前登录态查到，公开可见性仍未证实。只读 AI 总结工具已实测可调用，抽查视频无可用总结；字幕回退与长度控制通过模拟验证。
+49 项模拟测试覆盖调度、手动跳过休息、0 分钟轮休、独立消息轮询、重复校验幂等、预算、缓存、消息合并、楼层限额、统一发送、用量采集与文件维护；测试不公开发言。真实 WorkBuddy 已验证宿主用量采集，可取得模型实报 Token。真实 WorkBuddy 判断落盘、收件箱、搜索和目标楼层已验证；实际循环累计有 4 条接口接受回执，自动复核均在当前登录态查到，公开可见性仍未证实。只读 AI 总结工具已实测可调用，抽查视频无可用总结；字幕回退与长度控制通过模拟验证。
 
 当前仓库：https://github.com/yan450863-ui/cyber-pet 。上游仓库：https://github.com/c1overzz/dsh-bili-scroll 。自有定制内容和上游许可分开适用，见 `LICENSE` 及根目录 `LICENSE-SCOPE.md`；B站桥接上游许可见 `vendor/`。
