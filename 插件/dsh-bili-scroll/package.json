@@ -1,0 +1,80 @@
+{
+  "name": "dsh-bili-scroll",
+  "version": "0.1.7",
+  "description": "DSH 本地定制：B站双任务组循环、对话区设置、内容理解与自主互动",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "bilibili",
+    "mcp",
+    "duty"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yan450863-ui/cyber-pet.git",
+    "directory": "插件/dsh-bili-scroll"
+  },
+  "homepage": "https://github.com/yan450863-ui/cyber-pet#readme",
+  "bugs": {
+    "url": "https://github.com/yan450863-ui/cyber-pet/issues"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "lib",
+    "prompts",
+    "vendor",
+    "README.md",
+    "selfcheck.mjs",
+    "LICENSE",
+    "pet-shell.fragment.js",
+    "build-client.mjs"
+  ],
+  "engines": {
+    "dsh": ">=0.1.7-rc.1",
+    "node": ">=22"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}
