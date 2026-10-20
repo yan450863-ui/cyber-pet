@@ -448,6 +448,7 @@ async def bili_subtitle(bvid: str) -> str:
         "title": info.get("title", ""),
         "language": target.get("lan_doc", ""),
         "segments": len(texts),
+        "cues": [{"from": x.get("from", 0), "text": x.get("content", "")} for x in sub_data.get("body", [])],
         "text": full_text,
     }, ensure_ascii=False)
 

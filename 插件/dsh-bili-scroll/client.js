@@ -4,6 +4,8 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react'), h = React.createElement
     const API = '/api/bili-duty'
+    const readingDefaults={videoReadChars:600,videoFollowupChars:1200,allowVideoFollowup:true,petAliases:'',petSelfRecognition:true}
+    const fieldLabels={}
     const browseTypes=['教程','评测','资讯','论文解读','剧情解说','剪辑','制作分析','日常','其他']
     function BrowseFeedback({row,petId}) {
       const [type,setType]=React.useState(row.feedback?.type||row.browseType||'其他'),[busy,setBusy]=React.useState(false),[msg,setMsg]=React.useState('')
@@ -57,7 +59,7 @@ window.__ModuleLoader__.load({
           loading = true
           try {
             const result = await request('/status')
-            if (alive.current) { setSt(result); setDraft(old => old || { ...result.config, keywords: (result.config.keywords || []).join('\n'), excludedWords: (result.config.excludedWords || []).join('\n'), preferredAuthors: (result.config.preferredAuthors || []).join('\n'),browsePreferredUids:(result.config.browsePreferredUids||[]).join('\n'),browseBlockedUids:(result.config.browseBlockedUids||[]).join('\n') }) }
+            if (alive.current) { setSt(result); setDraft(old => old || { ...readingDefaults, ...result.config, keywords: (result.config.keywords || []).join('\n'), excludedWords: (result.config.excludedWords || []).join('\n'), preferredAuthors: (result.config.preferredAuthors || []).join('\n'),browsePreferredUids:(result.config.browsePreferredUids||[]).join('\n'),browseBlockedUids:(result.config.browseBlockedUids||[]).join('\n') }) }
           } catch (e) { if (alive.current) setMessage(e.message) }
           finally { loading = false }
         }
@@ -73,14 +75,15 @@ window.__ModuleLoader__.load({
         finally { if (alive.current) setBusy('') }
       }
       const save = async () => {
-        const cfg = { ...draft, keywords: String(draft.keywords || '').split('\n').map(s => s.trim()).filter(Boolean) }
+        const cfg = { ...readingDefaults, ...draft, keywords: String(draft.keywords || '').split('\n').map(s => s.trim()).filter(Boolean) }
         for (const key of ['excludedWords', 'preferredAuthors','browsePreferredUids','browseBlockedUids']) cfg[key] = String(draft[key] || '').split('\n').map(s => s.trim()).filter(Boolean)
         for(const key of ['browsePreferredUids','browseBlockedUids'])if(cfg[key].some(v=>!/^\d{1,20}$/.test(v)||Number(v)<=0))throw Error('UP列表请填写数字UID，一行一个')
+        if(['videoReadChars','videoFollowupChars'].some(k=>Number(cfg[k])<100||Number(cfg[k])>6000))throw Error('阅读字数须为100—6000')
         if(Number(cfg.browseDays)>365||Number(cfg.browseFreshDays)>365)throw Error('时间范围须为0—365天')
         if(Number(cfg.browseExplorationPercent)>100)throw Error('探索比例须为0—100')
-        for (const key of ['browseDays','browseFreshDays','browseExplorationPercent','memeChance', 'memeMaxCount', 'memeCooldownSec', 'maxCommentChars', 'maxReplyChars', 'videoCount', 'videoIntervalSec', 'messagesCount', 'messagesIntervalSec', 'restMinutes', 'maxRounds', 'cooldownSec', 'dailyTokenBudget', 'replyReserveTokens', 'maxThreadReplies', 'cacheMinutes', 'retentionDays', 'aiWeight', 'llmWeight', 'animeWeight', 'animationWeight']) {
+        for (const key of ['videoReadChars','videoFollowupChars','browseDays','browseFreshDays','browseExplorationPercent','memeChance', 'memeMaxCount', 'memeCooldownSec', 'maxCommentChars', 'maxReplyChars', 'videoCount', 'videoIntervalSec', 'messagesCount', 'messagesIntervalSec', 'restMinutes', 'maxRounds', 'cooldownSec', 'dailyTokenBudget', 'replyReserveTokens', 'maxThreadReplies', 'cacheMinutes', 'retentionDays', 'aiWeight', 'llmWeight', 'animeWeight', 'animationWeight']) {
           const n = Number(cfg[key])
-          if (cfg[key] === '' || !Number.isInteger(n) || n < (key.endsWith('IntervalSec') || ['cooldownSec', 'retentionDays'].includes(key) ? 1 : 0) || n > 100000000) throw new Error('请填写有效整数；间隔及保留天数至少1，休息0表示不休息')
+          if (cfg[key] === '' || !Number.isInteger(n) || n < (key.endsWith('IntervalSec') || ['cooldownSec', 'retentionDays'].includes(key) ? 1 : 0) || n > 100000000) throw new Error((fieldLabels[key]||key)+'：请填写有效整数；此项最小值为'+(key.endsWith('IntervalSec')||['cooldownSec','retentionDays'].includes(key)?1:0))
           cfg[key] = n
         }
         for (const key of ['maxCommentChars', 'maxReplyChars']) if (cfg[key] < 1 || cfg[key] > 1000) throw new Error('评论和回复字数上限须为1—1000')
@@ -117,8 +120,8 @@ window.__ModuleLoader__.load({
       }
       if (!st || !draft) return h('div', { 'data-bd-page': '' }, message || '正在读取刷 B站设置…')
       const s = st.cycle || {}
-      const toggle = (key, label) => h('label', { key }, h('input', { type: 'checkbox', checked: !!draft[key], onChange: e => edit(key, e.target.checked) }), label)
-      const num = (key, label, min = 0) => h('label', { key }, label, h('input', { type: 'number', min, max: 1000000, step: 1, value: draft[key] ?? '', onChange: e => edit(key, e.target.value), 'aria-label': label }))
+      const toggle = (key, label) => h('label', { key }, h('input', { type: 'checkbox', checked: !!(draft[key]??readingDefaults[key]), onChange: e => edit(key, e.target.checked) }), label)
+      const num = (key,label,min=0) => { fieldLabels[key]=label;return h('label',{key},label,h('input',{type:'number',min,max:1000000,step:1,value:draft[key]??readingDefaults[key]??'',onChange:e=>edit(key,e.target.value),'aria-label':label})) }
       const petField = (key, label, rows = 2) => h('label', { key }, label, h('textarea', { rows, maxLength: key === 'petName' || key === 'ownerTitle' ? 100 : 4000, value: draft[key] || '', onChange: e => edit(key, e.target.value) }))
       const group = (key, title, note) => h('section', { key }, h('h3', null, title),
         toggle(key + 'Enabled', '启用' + title), h('div', { 'data-bd-note': '' }, note),
@@ -170,6 +173,9 @@ window.__ModuleLoader__.load({
           h('div',{'data-bd-note':''},'普通招呼不读视频；视频问题优先总结，缺失时字幕摘录最多2400字，无法获取就诚实说明。每条最多补读一次，不下载视频。'),
           h('div', { 'data-bd-note': '' }, '首次启用跳过已有通知；没有新消息不调用模型。不改变 B站已读状态。'),
           toggle('lightweight', '轻量阅读视频（推荐）'),
+          num('videoReadChars','普通阅读字数（默认600，含时间点）'),
+          num('videoFollowupChars','按需补读字数（默认1200）'),
+          toggle('allowVideoFollowup','允许按需补读视频（每条最多一次）'),
           h('div', { 'data-bd-note': '' }, '优先 B站 AI 总结，没有时使用字幕摘录，最多 3 条短评。消息回复只读对应楼层和简介，不读整段字幕。')),
         h('section', null, h('h3', null, '循环与休息'),
           num('restMinutes', '每轮完成后休息（分钟）'), num('maxRounds', '运行轮数（0 = 无限）'),
@@ -188,6 +194,8 @@ window.__ModuleLoader__.load({
           h('label',null,'主人的B站账号（数字UID）',h('input',{type:'text',inputMode:'numeric',value:draft.ownerBiliUid||'',placeholder:'例如：个人主页 space.bilibili.com/ 后面的数字',onChange:e=>edit('ownerBiliUid',e.target.value)})),
           toggle('mentionOwnerOnLikedVideo','看到喜欢的视频是否 @ 主人'),
           h('div',{'data-bd-note':''},'开启后，宠物只在判断值得分享的视频评论里@这一个UID；需要同时开启自动评论。@称呼计入字数上限，超限时跳过@。'),
+          toggle('petSelfRecognition','认出视频里的同名拟人角色是自己的角色形象'),
+          petField('petAliases','自我称呼与别名（一行一个，可留空；自动识别本名）',2),
           petField('petPersonality', '性格与偏好'), petField('petSpeechStyle', '说话方式', 4),
           petField('petInteractionStyle', '收到@和回复时怎么互动', 4), petField('petExamples', '表达示例（仅参考语气）', 4), petField('petWorkScope', '工作内容范围', 3),
           num('maxCommentChars', '主动评论最多字数（1—1000）', 1), num('maxReplyChars', '消息回复最多字数（1—1000）', 1),

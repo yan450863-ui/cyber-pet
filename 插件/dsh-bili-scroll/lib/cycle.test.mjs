@@ -145,7 +145,7 @@ test('轻量视频优先总结，字幕回退限长；消息仅保留目标楼�
   assert.equal(f.calls.find(c => c.name === 'bili_comments').args.num, 3)
   hasSummary = false
   await worker.step('video', { signal: f.signal.signal, round: 1 })
-  assert.ok(contexts[1].overview.text.length <= 2400)
+  assert.ok(contexts[1].overview.text.length <= 600)
   assert.equal(contexts[1].overview.partial, true)
   const thread = { replies: [1, 2, 3].map(rpid => ({ rpid, content: { message: '文本'.repeat(1000) }, member: { secret: '不需要的字段' } })) }
   const brief = threadBrief(thread, 2, 1)
@@ -169,7 +169,7 @@ test('发送结果不确定不重发；决策期间停止或关闭权限不会�
   assert.throws(() => decisionOf({ action: 'reply', summary: 'a', text: '' }))
 })
 
-test('长字幕与评论写入文件，真实子进程命令行保持短小，避免 Windows ENAMETOOLONG', async t => {
+test('长字幕不进入任务文件，真实子进程仅读取有上限的摘录，命令行保持短小', async t => {
   const f = fixture(t)
   const original = f.options.call
   const worker = createCycleWorker({ ...f.options, decide: undefined,
@@ -179,7 +179,8 @@ test('长字幕与评论写入文件，真实子进程命令行保持短小，�
       const prompt = process.argv.at(-1);
       assert(prompt.length < 5000);
       const input = prompt.match(/先用文件读取工具读取 (.+?)。/)[1];
-      assert(JSON.parse(fs.readFileSync(input,'utf8')).context.subtitle.text.length > 100000);
+      const data=JSON.parse(fs.readFileSync(input,'utf8'));
+      assert(data.context.overview.text.length<=600);assert(data.context.overview.originalChars>100000);assert(!data.context.subtitle);
       const output = prompt.match(/将结果写入这个工作区内的绝对路径：([^\\n]+)/)[1];
       fs.writeFileSync(output, JSON.stringify({action:'skip',summary:'大文件传递成功，不发布',text:''}));
     `, '--'] }),

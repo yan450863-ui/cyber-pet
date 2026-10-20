@@ -1,4 +1,5 @@
 /** B站助手：双任务组循环、对话区设置、登录与依赖管理。 */
+import { READING_DEFAULTS, normalizeReading } from './lib/reading.mjs'
 import { loadHostDeps } from './lib/hostdeps.mjs'
 import { createApiConnection } from './lib/api-connection.mjs'
 
@@ -33,6 +34,7 @@ export const inject = ['webServer', 'tools', 'settings']
 // ⚠️ schemastery 彻底拿不到时，这里会是 undefined —— **插件照常加载**，只是设置页降级
 //    （宁可少一个设置页，也不能因为一个 import 让整条插件不激活 ✗）
 export const Config = !z ? undefined : z.object({
+  ...Object.fromEntries(Object.entries(READING_DEFAULTS).map(([key,value])=>[key,(typeof value==='boolean'?z.boolean():z.number()).default(value).extra('volatile',true)])),
   ...Object.fromEntries(Object.entries(BROWSE_DEFAULTS).map(([key,value])=>[key,(Array.isArray(value)?z.array(z.string()):typeof value==='number'?z.number():z.string()).default(value).extra('volatile',true)])),
   ...Object.fromEntries(Object.entries(MEME_DEFAULTS).map(([key, value]) => [key,
     (typeof value === 'boolean' ? z.boolean() : typeof value === 'number' ? z.number() : z.string()).default(value).extra('volatile', true)])),
@@ -132,7 +134,7 @@ export function apply(ctx, config) {
 
 
   const DEFAULTS = {
-    ...CYCLE_DEFAULTS, ...ACTIVITY_DEFAULTS, ...BROWSE_DEFAULTS, ...PET_DEFAULTS, ...MEME_DEFAULTS, autoComment: false, replyToComments: false, messagesNewOnly: true, lightweight: true,
+    ...READING_DEFAULTS, ...CYCLE_DEFAULTS, ...ACTIVITY_DEFAULTS, ...BROWSE_DEFAULTS, ...PET_DEFAULTS, ...MEME_DEFAULTS, autoComment: false, replyToComments: false, messagesNewOnly: true, lightweight: true,
     asrModel: 'small', keywords: [], pythonPath: portablePython || 'python',
     dshBin: '', headlessProfile: 'headless', workspace: '', reportLevel: 'full',
   }
@@ -156,6 +158,8 @@ export function apply(ctx, config) {
     if(BROWSE_PRESETS[p.browsePreset]){
       for(const [key,value] of Object.entries(presetPatch(p.browsePreset)))if(!(key in p))p[key]=value
     }
+    const reading=normalizeReading(p)
+    for(const key of Object.keys(READING_DEFAULTS))if(key in p)p[key]=reading[key]
     const browse=normalizeBrowse(p)
     for(const key of Object.keys(BROWSE_DEFAULTS))if(key in p)p[key]=browse[key]
     const memes = normalizeMemes(p)

@@ -340,3 +340,16 @@ test('近期热门搜索传入时间范围与播放排序，过滤旧视频后�
  assert.equal(w.status().activity[0].bvid,'BV3333333333')
  assert.equal(f.calls.some(c=>c.name==='bili_reply'),false)
 })
+
+test('普通阅读600、补读1200且每条最多一次，关闭补读后消息不读取字幕',async t=>{
+ const f=setup(t);Object.assign(f.cfg,{autoComment:false,videoReadChars:600,videoFollowupChars:1200})
+ const original=f.options.call,views=[];let subtitles=0
+ f.options.call=async(name,args)=>{if(name==='bili_video_summary')return {text:''};if(name==='bili_subtitle'){subtitles++;return {text:Array.from({length:300},(_,i)=>'第'+i+'句'+('角色看向同伴。'.repeat(8))).join('\n')}}return original(name,args)}
+ f.options.decide=async(group,item,context)=>{views.push({...context.overview});return {action:'read_video',scope:'in_scope',boundary:'ok',summary:'请求具体细节',text:''}}
+ await createCycleWorker(f.options).step('video',{signal:f.signal,round:1})
+ assert.equal(views.length,2);assert(views[0].text.length<=600);assert(views[1].text.length<=1200);assert.equal(views[1].followup,true);assert.equal(subtitles,1)
+ const g=setup(t);g.cfg.allowVideoFollowup=false;g.setItems([{bvid:'BV1111111111',rpid:42,root:40,id:'q',notification:{item:{source_content:'这个视频讲了什么？'}}}]);let decisions=0
+ g.options.decide=async()=>{decisions++;return {action:'read_video',scope:'in_scope',boundary:'ok',summary:'请求补读',text:''}}
+ await createCycleWorker(g.options).step('messages',{signal:g.signal,round:1})
+ assert.equal(decisions,1);assert.equal(g.calls.some(c=>['bili_video_summary','bili_subtitle'].includes(c.name)),false)
+})

@@ -70,7 +70,7 @@ export function browseGate(item,cfg,{semantic=false}={}) {
 }
 export function browsePrompt(cfg) {
   const c=normalizeBrowse(cfg)
-  const compact={keywords:cfg.keywords||[],topic:c.browseTopic,types:c.browseTypes,strictness:c.browseStrictness,explorationPercent:c.browseExplorationPercent,preferences:Object.fromEntries(VIDEO_TYPES.map(v=>[v,typePreference(c,v)]).filter(([,v])=>v))}
+  const compact={...(c.browseTopic?{topic:c.browseTopic}:{keywords:cfg.keywords||[]}),types:c.browseTypes,strictness:c.browseStrictness,explorationPercent:c.browseExplorationPercent,preferences:Object.fromEntries(VIDEO_TYPES.map(v=>[v,typePreference(c,v)]).filter(([,v])=>v))}
   return '\n浏览口味（只约束主动刷视频，不妨碍正常@回复）：'+JSON.stringify(compact)+'。主动视频判断必须额外返回videoType（教程/评测/资讯/论文解读/剧情解说/剪辑/制作分析/日常/其他）、interest（match/uncertain/mismatch）、interestEvidence（布尔值，资料中有明确证据才true）。按实际主体内容判断，不能因为标题带AI、动画就认定相关；AI生成的无关领域素材不等于AI技术视频。more优先、less尽量少选；block和未选类型必须跳过。严格模式要求主体高度相关、资料有证据；标准模式主体相关；宽松模式允许同一工作范围内的间接相关。探索仅允许相关性不确定的内容，不绕过类型、UP、屏蔽或固定工作边界。判断理由写summary，不增加一次模型调用。'
 }
 export const browseSignature=cfg=>JSON.stringify([normalizeBrowse(cfg),cfg.keywords||[],cfg.excludedWords||[]])
