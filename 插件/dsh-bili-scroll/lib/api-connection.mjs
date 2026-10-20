@@ -18,7 +18,7 @@ export function createApiConnection(home, fetcher = fetch) {
   const current = () => {
     const rows = read(profile('desktop')), model = rows.find(r => r.id === 'agent-default-model')?.config || {}
     const p = rows.find(r => r.id === 'llm-pi-ai')?.config?.providers?.[model.provider] || {}
-    return { baseURL: p.baseURL || '', model: model.model || '', provider: model.provider || 'workbuddy', api: p.api || 'openai-completions', keyRef: p.apiKeyEnv || 'PET_API_KEY' }
+    return { baseURL: p.baseURL || '', model: model.model || '', provider: model.provider || 'custom', api: p.api || 'openai-completions', keyRef: p.apiKeyEnv || 'PET_API_KEY' }
   }
   const status = () => { const c = current(); return { baseURL: c.baseURL, model: c.model, configured: !!credentials().refs?.[c.keyRef] } }
   const validate = body => {
@@ -50,6 +50,7 @@ export function createApiConnection(home, fetcher = fetch) {
         if (pi < 0 || mi < 0) throw Error('模型配置不完整，尚未保存')
         doc.setIn([pi, 'config', 'providers', c.provider], { displayName: '自定义 API', api: 'openai-completions', baseURL: c.baseURL, apiKeyEnv: c.keyRef, models: [{ id: c.model, name: c.model }] })
         doc.setIn([mi, 'config'], { provider: c.provider, model: c.model })
+        doc.setIn([mi, 'disabled'], false)
         changes.push([path, String(doc)])
       }
       const creds = credentials(); creds.refs ||= {}; creds.refs[c.keyRef] = c.key

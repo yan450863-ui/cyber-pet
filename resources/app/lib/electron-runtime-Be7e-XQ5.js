@@ -3730,9 +3730,7 @@ var ElectronDesktopRuntime = class {
 			this.generation = generation;
 			this.mountTask = generation.mount(beforeInteractive).then(() => {
 				this.rendererHealthGate?.acceptNativeMount();
-				this.nextTransitionNotice.open(this.locale, DESKTOP_RELEASE_CHANNEL, () => this.generation === generation && !this.quitting).then(() => this.offerUpdateArtifactCleanup()).catch((cause) => {
-					this.logError(`dsh-plugin-desktop: failed to resolve update installer cleanup: ${cause instanceof Error ? cause.message : String(cause)}`);
-				});
+				// Pet builds use their own first-use guide; upstream update notices are excluded.
 			}).catch((cause) => {
 				if (this.generation === generation) this.generation = void 0;
 				throw cause;

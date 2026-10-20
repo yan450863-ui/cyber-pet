@@ -13,7 +13,7 @@ test('API连接双profile同步、保留凭证记录、密钥不回传，测试�
     mkdirSync(join(home,'profiles',name),{recursive:true})
     writeFileSync(join(home,'profiles',name,'cordis.patch.yml'),yaml.stringify([
       {id:'llm-pi-ai',config:{providers:{workbuddy:{baseURL:'http://localhost:7863/v1',apiKeyEnv:'WORKBUDDY_API_KEY'}}}},
-      {id:'agent-default-model',config:{provider:'workbuddy',model:'old'}},
+      {id:'agent-default-model',disabled:true,config:{provider:'workbuddy',model:'old'}},
       {id:'other',config:{keep:42}},
     ]))
   }
@@ -27,7 +27,7 @@ test('API连接双profile同步、保留凭证记录、密钥不回传，测试�
   api.save({baseURL:'http://localhost:9000/v1/',model:'new-model',apiKey:''})
   for (const name of ['desktop','headless']) {
     const rows=yaml.parse(readFileSync(join(home,'profiles',name,'cordis.patch.yml'),'utf8'))
-    assert.equal(rows[1].config.model,'new-model');assert.equal(rows[2].config.keep,42)
+    assert.equal(rows[1].disabled,false);assert.equal(rows[1].config.model,'new-model');assert.equal(rows[2].config.keep,42)
     assert.equal(rows[0].config.providers.workbuddy.baseURL,'http://localhost:9000/v1')
   }
   const credentials=yaml.parse(readFileSync(join(home,'.credentials.yaml'),'utf8'))

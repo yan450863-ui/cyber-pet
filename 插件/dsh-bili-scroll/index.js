@@ -92,6 +92,9 @@ export function apply(ctx, config) {
     return myVer
   }
   const stateDir = stateDirOf(ctx)
+  const portableRoot = join(pluginDir, '..', '..')
+  const portablePythonRoot = join(portableRoot, 'resources', 'runtime', 'x64', 'primary-runtime', 'dependencies', 'python')
+  const portablePython = existsSync(join(portableRoot, 'pet-portable.json')) && existsSync(join(portablePythonRoot, 'Lib', 'site-packages', 'bilibili_api')) ? join(portablePythonRoot, 'python.exe') : ''
 
   // ⭐ "就绪"必须检查依赖真的装上了，不能只看目录存不存在
   //    （2026-10-15：只看目录，害一位真实用户"显示就绪但其实装失败"白折腾 ✗）
@@ -111,7 +114,7 @@ export function apply(ctx, config) {
   const hasPkg = (venvRoot, prefix) => {
     try { return readdirSync(sitePkgs(venvRoot)).some((n) => n.startsWith(prefix)) } catch { return false }
   }
-  const venvReadyNow = () => existsSync(venvPython()) && hasPkg(join(stateDir, '.venv'), 'bilibili_api')
+  const venvReadyNow = () => existsSync(venvPython()) && hasPkg(portablePython ? portablePythonRoot : join(stateDir, '.venv'), 'bilibili_api')
   const asrReadyNow = () => existsSync(asrPython()) && hasPkg(asrDir, 'faster_whisper')
   const cfgFile = join(stateDir, 'config.json')
   const logFile = join(stateDir, 'duty.log')
@@ -130,7 +133,7 @@ export function apply(ctx, config) {
 
   const DEFAULTS = {
     ...CYCLE_DEFAULTS, ...ACTIVITY_DEFAULTS, ...BROWSE_DEFAULTS, ...PET_DEFAULTS, ...MEME_DEFAULTS, autoComment: false, replyToComments: false, messagesNewOnly: true, lightweight: true,
-    asrModel: 'small', keywords: [], pythonPath: 'python',
+    asrModel: 'small', keywords: [], pythonPath: portablePython || 'python',
     dshBin: '', headlessProfile: 'headless', workspace: '', reportLevel: 'full',
   }
 
@@ -198,6 +201,7 @@ export function apply(ctx, config) {
     return clampPatch(out)
   }
   const cfg = loadCfg()
+  if (portablePython) cfg.pythonPath = portablePython
   const pets = new PetStore(stateDir, cfg, { fresh: !existsSync(cfgFile) && !settingsDesc()?.user?.petName, defaults: DEFAULTS })
   if (pets.activeId === 'builtin-companion' && !existsSync(cfgFile)) Object.assign(cfg, normalize(pets.active().config, cfg))
   const apiConnection = createApiConnection(dirname(stateDir))
@@ -205,7 +209,7 @@ export function apply(ctx, config) {
   if (presetSyncPatch) Object.assign(cfg, presetSyncPatch)
   pets.update(cfg)
   // ⭐ 配置是"随时可能被设置页就地改掉"的东西 ⇒ 每个入口用之前重算一遍（cfg 这个对象要一直指向同一份）
-  const refreshCfg = () => { Object.assign(cfg, loadCfg(), presetSyncPatch || {}) }
+  const refreshCfg = () => { Object.assign(cfg, loadCfg(), presetSyncPatch || {}, portablePython ? { pythonPath: portablePython } : {}) }
   const saveCfg = (patch) => { Object.assign(cfg, normalize(patch, cfg)); writeJson(cfgFile, cfg); pets.update(cfg) }
 
   const saveCfgHost = async (patch) => {
@@ -599,9 +603,9 @@ export function apply(ctx, config) {
     req.on('error', () => finish({}))
   })
 
-  const venvPython = () => process.platform === 'win32'
+  const venvPython = () => portablePython || (process.platform === 'win32'
     ? join(stateDir, '.venv', 'Scripts', 'python.exe')
-    : join(stateDir, '.venv', 'bin', 'python')
+    : join(stateDir, '.venv', 'bin', 'python'))
 
 
   let installing = false

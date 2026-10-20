@@ -49,3 +49,5 @@
 **/*.log
 **/*.tmp
 **/.DS_Store
+
+!/resources/app/lib/pet-portable.js

@@ -1,3 +1,4 @@
+import { preparePetPortable } from './pet-portable.js';
 import { C as socksProxyDiagnostic, D as desktop_office_exports, E as desktopPrimaryRuntime, M as HostRpc, O as resolveDesktopOfficeConfig, S as parsePacProxyResult, T as FileExporter, _ as DesktopActionsService, a as beginDesktopSetupWizard, b as buildDesktopProxyOverlay, c as desktopSetupAccountPending, d as desktopSetupWizardStateConstants, f as dismissDesktopSetupAccount, g as DesktopSettingsController, h as clearDesktopProfileCheckpoint, i as inspectDesktopProfileChannelAdmission, j as runtimeSnapshot, k as bindNativeRuntime, l as desktopSetupWizardPending, m as DesktopProfileCheckpoint, n as desktopReleaseUserDataLocations, o as clearDesktopSetupWizardState, p as readDesktopSetupWizardState, r as hasDesktopProfileUsageHistory, s as completeOrSkipDesktopSetupWizard, t as clearDesktopProfileUsageHistory, u as desktopSetupWizardRequired, v as logInactiveStartupEntries, w as installAgentErrorLogging, x as desktopProxyEnvLookup, y as PROBE_URLS } from "./profile-channel-admission-BCSNO_nW.js";
 import { a as DESKTOP_PRODUCT_NAME, c as OTHER_DESKTOP_PRODUCT_IDENTITY, i as DESKTOP_PRODUCT_IDENTITY, n as DESKTOP_PACKAGE_NAME, o as DESKTOP_RELEASE_CHANNEL, s as DESKTOP_RELEASE_IDENTITIES, t as DESKTOP_APP_ID } from "./product-identity-DUPfNg4Q.js";
 import { a as deleteDesktopProfile, c as selectDesktopProfile, i as createDesktopWebProfile, n as beginDesktopProfileStartup, o as listDesktopProfiles, r as canDeleteDesktopProfile, s as readDesktopProfileState, t as assertDesktopProfileName } from "./profile-manager-DZ2V7TPG.js";
@@ -3890,6 +3891,7 @@ async function mirrorDesktopProfilePreferences(settingsDocument, preferences) {
 }
 /** Start one Electron process and leave lifetime to the mounted desktop plugin. */
 async function start() {
+	const petPortable = preparePetPortable(app, resolve(fileURLToPath(new URL("../../../", import.meta.url))));
 	if (!app.requestSingleInstanceLock()) {
 		app.quit();
 		return;
@@ -4630,7 +4632,7 @@ async function start() {
 			prepared = prepareDesktopProfile(process.env.DSH_TELEMETRY_DISABLED, homeDir, process.platform, activeProfileName, pluginManagementStatePath, marketSelection, preparationHooks);
 		}
 		const setupWizardState = safeModePaths === void 0 ? readDesktopSetupWizardState(marketUserDataDir, prepared.profile.dir) : void 0;
-		let setupPending = safeModePaths === void 0 && desktopSetupWizardRequired(setupWizardState, setupWizardVersions) && (desktopSetupWizardPending(marketUserDataDir, prepared.profile.dir) || !hasDesktopProfileUsageHistory(releaseUserDataLocations, prepared.profile.dir, activeProfileName));
+		let setupPending = !petPortable && safeModePaths === void 0 && desktopSetupWizardRequired(setupWizardState, setupWizardVersions) && (desktopSetupWizardPending(marketUserDataDir, prepared.profile.dir) || !hasDesktopProfileUsageHistory(releaseUserDataLocations, prepared.profile.dir, activeProfileName));
 		if (setupPending) await beginDesktopSetupWizard(marketUserDataDir, prepared.profile.dir);
 		const setupInput = {
 			...readDesktopSetupWizardSettings(prepared.settingsDocument),

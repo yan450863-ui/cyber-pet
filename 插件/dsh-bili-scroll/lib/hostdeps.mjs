@@ -29,6 +29,7 @@ export function candidateRoots() {
   const out = []
   const push = (p) => { if (p && !out.includes(p)) out.push(p) }
   push(process.env.DSH_HOST_MODULES)
+  push(join(dirname(fileURLToPath(import.meta.url)), '../../../resources/app/node_modules/@deepseek-ai'))
 
   const appdata = process.env.APPDATA
   if (appdata) {
