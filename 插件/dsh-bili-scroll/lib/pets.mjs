@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { PET_DEFAULTS } from './pet-profile.mjs'
+import { PET_DEFAULTS, personalityOf } from './pet-profile.mjs'
 import { upgradeMemeCodes } from './memes.mjs'
 
 export const BUILTIN_ID = 'builtin-companion'
@@ -34,20 +34,29 @@ export class PetStore {
       pet.config.memeCodes = upgradeMemeCodes(pet.config.memeCodes); pet.memePresetVersion = 2
       if (this.activeId === pet.id) this.presetPatch = { ...this.presetPatch, memeCodes:pet.config.memeCodes }
     }
+    for (const pet of Object.values(this.data.pets)) {
+      pet.personality = personalityOf(pet.personality || pet.config)
+      Object.assign(pet.config, pet.personality)
+      pet.platforms ||= {}
+    }
+    this.data.version = 2
     this.save()
   }
   get activeId() { return this.data.activeId }
   active() { return this.data.pets[this.activeId] }
   get(id) { if (!Object.hasOwn(this.data.pets, id)) throw Error('宠物不存在'); return this.data.pets[id] }
   save() { writeFileSync(this.file + '.tmp', JSON.stringify(this.data, null, 2)); renameSync(this.file + '.tmp', this.file) }
-  update(config) { this.active().config = { ...config }; this.save() }
+  update(config) { this.active().personality = personalityOf(config); this.active().config = { ...config, ...this.active().personality }; this.save() }
+  personality() { return { ...this.active().personality } }
+  platform(name) { return structuredClone(this.active().platforms?.[name] || {}) }
+  updatePlatform(name, config) { this.active().platforms ||= {}; this.active().platforms[name] = { ...config }; this.save() }
   list() { return Object.values(this.data.pets).sort((a,b) => Number(b.id === BUILTIN_ID)-Number(a.id === BUILTIN_ID)).map(p => ({ id: p.id, builtin: p.id === BUILTIN_ID, name: p.config.petName, personality: p.config.petPersonality, createdAt: p.createdAt })) }
   remove(id) { this.get(id); if (id === BUILTIN_ID) throw Error('内置默认宠物不能删除'); if (id === this.activeId) throw Error('请先切换宠物再删除'); delete this.data.pets[id]; this.save() }
   resetChat(id) { this.get(id).messages = []; this.save() }
   create(config) {
     if (this.list().length >= 50) throw Error('最多保存50只宠物')
     const id = randomUUID()
-    this.data.pets[id] = { id, config: { ...config, memePack: id }, messages: [], createdAt: Date.now() }
+    this.data.pets[id] = { id, personality: personalityOf(config), platforms: {}, config: { ...config, memePack: id }, messages: [], createdAt: Date.now() }
     this.save(); return this.data.pets[id]
   }
   select(id) { this.get(id); this.data.activeId = id; this.save() }

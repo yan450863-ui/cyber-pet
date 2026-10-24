@@ -10,10 +10,11 @@ function PetSettingsDialog({onClose}){
   ['选择宠物','左上宠物卡片展开抽屉。默认deepseek置顶；可以新建、切换或删除自己的宠物，每只宠物分别保存人设、设置和聊天。'],
   ['连接模型','左下“API连接”填写兼容OpenAI格式的接口地址、API Key和模型ID；可先测试读取模型列表。保存后用左上刷新菜单重启应用。'],
   ['连接B站','宠物设置→账号与环境：按需安装主依赖，扫码后在手机确认。“检查B站登录与搜索”的结果显示在按钮下方；“退出登录”停止循环并退出本应用账号。'],
-  ['设计小习惯','在宠物设置修改性格、说话方式、兴趣关键词、评论/回复字数、表情和工作节奏。宠物聊天也可以明确提出修改要求，执行结果会显示改了几项。'],
-  ['开始工作','保存设置后选“开始/继续循环”或“只跑一轮”。公开评论和回复需要分别打开自动发送开关；新宠物默认关闭。停止会保留进度，重启后需手动继续。'],
+  ['设置性格','左侧“性格设置”独立编辑名字、主人称呼、性格、语气、互动方式、示例和角色别名。同一只宠物的聊天与各平台共用；各平台工作范围、关键词、字数和自动发送开关在宠物设置内分别保存。'],
+  ['连接小红书','宠物设置右上选择小红书，准备/启动连接组件，首次下载服务及浏览器。扫码后检查登录和测试搜索；只读取笔记文字，自动评论与回复默认关闭。模型反代需保持运行。'],
+  ['开始工作','保存设置后选“开始/继续循环”或“只跑一轮”。公开评论和回复需要分别打开自动发送开关；新宠物默认关闭。停止会保留进度，重启后需手动继续。启动小红书会暂停B站，启动B站也会暂停小红书。'],
   ['分享与回复','填主人的B站数字UID后，可选择喜欢的视频是否@主人。收到@或回复会读对应楼层；问到视频内容时可按需看总结/字幕摘录，资料不足会说明。'],
-  ['查看与清理','刷视频日志、回复日志按条目展开操作详情。宠物聊天右上“重置聊天”清除聊天上下文，保留人设和工作日志；删除和重置均需确认。']
+  ['查看与清理','刷视频日志、回复日志右上选择平台，按条目展开操作详情。宠物聊天右上“重置聊天”清除聊天上下文，保留人设和工作日志；删除和重置均需确认。']
  ];
  return h('div',{className:'dshDesktopActionMenu',style:{position:'fixed',inset:0,transform:'none',width:'100vw',maxWidth:'none',height:'100vh',margin:0,padding:24,border:0,borderRadius:0,background:'#20272d66',display:'grid',placeItems:'center',zIndex:1000,WebkitAppRegion:'no-drag'},onClick:e=>{if(e.target===e.currentTarget)onClose()}},
   h('section',{role:'dialog','aria-modal':true,'aria-label':'设置与操作说明',style:{width:'min(760px,95vw)',maxHeight:'85vh',overflow:'hidden',display:'flex',flexDirection:'column',boxSizing:'border-box',background:'#faf9f6',color:'#303930',borderRadius:20,padding:'25px 30px',boxShadow:'0 15px 70px #0003',lineHeight:1.8,fontSize:14,whiteSpace:'normal'}},

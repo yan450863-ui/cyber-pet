@@ -20,7 +20,13 @@ import { BROWSE_DEFAULTS, BROWSE_PRESETS, VIDEO_TYPES, normalizeBrowse, feedback
 import { MEME_DEFAULTS, normalizeMemes, listMemes, importMeme } from './lib/memes.mjs'
 import { PetStore } from './lib/pets.mjs'
 import { createPetChat } from './lib/pet-chat.mjs'
-import { PET_DEFAULTS, normalizePet } from './lib/pet-profile.mjs'
+import { XhsClient } from './lib/xhs-client.mjs'
+import { createXhsService } from './lib/xhs-service.mjs'
+import { normalizeXhs, xhsPatch } from './lib/xhs-settings.mjs'
+import { createXhsWorker } from './lib/xhs-worker.mjs'
+import { createSocialJudge } from './lib/social-judge.mjs'
+import { PET_DEFAULTS, normalizePet, PERSONALITY_KEYS, personalityOf } from './lib/pet-profile.mjs'
+import { createHash } from 'node:crypto'
 import { McpClient } from './lib/mcp.mjs'
 import { verifyRecent, appendVerifyToReport } from './lib/verify.mjs'
 import { stateDirOf, readJson, writeJson, ensureHomeFiles, dayKey } from './lib/state.mjs'
@@ -210,9 +216,10 @@ export function apply(ctx, config) {
   const apiConnection = createApiConnection(dirname(stateDir))
   let presetSyncPatch = pets.presetPatch || null
   if (presetSyncPatch) Object.assign(cfg, presetSyncPatch)
+  Object.assign(cfg, pets.personality())
   pets.update(cfg)
   // ⭐ 配置是"随时可能被设置页就地改掉"的东西 ⇒ 每个入口用之前重算一遍（cfg 这个对象要一直指向同一份）
-  const refreshCfg = () => { Object.assign(cfg, loadCfg(), presetSyncPatch || {}, portablePython ? { pythonPath: portablePython } : {}) }
+  const refreshCfg = () => { Object.assign(cfg, loadCfg(), presetSyncPatch || {}, pets.personality(), portablePython ? { pythonPath: portablePython } : {}) }
   const saveCfg = (patch) => { Object.assign(cfg, normalize(patch, cfg)); writeJson(cfgFile, cfg); pets.update(cfg) }
 
   const saveCfgHost = async (patch) => {
@@ -396,7 +403,7 @@ export function apply(ctx, config) {
     async execute() { return runDuty() },
   })
 
-  tool({ name: 'bili_cycle_start', description: '按当前设置启动双任务组时间循环。', parameters: {}, async execute() { return cycle.start() } })
+  tool({ name: 'bili_cycle_start', description: '按当前设置启动双任务组时间循环。', parameters: {}, async execute() { await idleXhs();return cycle.start() } })
   tool({ name: 'bili_cycle_stop', description: '停止循环及当前模型操作，保留已完成进度。', parameters: {}, async execute() { return cycle.stop() } })
 
   tool({
@@ -546,9 +553,33 @@ export function apply(ctx, config) {
   })
   const chatAllowed = Object.keys(DEFAULTS).filter(k => !['pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel'].includes(k))
   const petChat = createPetChat({ home: stateDir, pets, config: currentCfg, resolveDsh, env: pyEnv, changeSettings: persistCfg, allowedKeys: chatAllowed })
+  const xhsHome = join(stateDir,'xiaohongshu'); mkdirSync(xhsHome,{recursive:true})
+  const xhsService = createXhsService(stateDir)
+  const xhsClient = new XhsClient({connection:xhsService.connection})
+  const xhsCfg = () => ({...currentCfg(),...normalizeXhs(pets.platform('xiaohongshu')),...pets.personality(),petId:pets.activeId})
+  const xhsJudge = createSocialJudge({home:xhsHome,dshHome:dirname(stateDir),config:xhsCfg,resolveDsh,env:pyEnv})
+  const xhsWorker = createXhsWorker({home:xhsHome,config:xhsCfg,client:xhsClient,judge:xhsJudge})
+  const xhsStateFile = () => join(xhsHome,'cycle-'+pets.activeId+'.json')
+  const xhsCycle = new Cycle({config:xhsCfg,state:readJson(xhsStateFile(),{}),step:xhsWorker.step,save:state=>writeJson(xhsStateFile(),state),onError:e=>log('小红书：'+e.message)})
+  let xhsLogin = {loggedIn:false}, xhsStarting = false, xhsStartAbort = null
+  const stopXhs = () => { xhsStartAbort?.abort(Error('已停止')); xhsCycle.stop() }
+  const idleXhs = async () => {stopXhs();for(let i=0;(xhsCycle.busy||xhsStarting)&&i<120;i++)await new Promise(r=>setTimeout(r,50));if(xhsCycle.busy||xhsStarting)throw Error('正在结束小红书操作，请稍后重试')}
+  const startXhs = async once => {
+    if(xhsCycle.busy||xhsStarting)throw Error('小红书当前操作尚未结束')
+    cycle.stop();for(let i=0;cycle.busy&&i<120;i++)await new Promise(r=>setTimeout(r,50));if(cycle.busy)throw Error('正在结束B站操作，请稍后重试')
+    xhsStarting=true;xhsStartAbort=new AbortController()
+    try {
+      xhsLogin=await xhsClient.check(xhsStartAbort.signal)
+      if(!xhsLogin.loggedIn)throw Error('请先启动小红书服务并扫码登录')
+      await xhsWorker.primeInbox(xhsStartAbort.signal);xhsStartAbort.signal.throwIfAborted()
+      return xhsCycle.start({once})
+    }finally{xhsStarting=false;xhsStartAbort=null}
+  }
+  ctx.effect(()=>()=>{stopXhs();xhsService.stop()},'小红书：停止任务与本地服务')
   ctx.effect(() => () => petChat.dispose(), 'pet-chat: 退出清理')
   const selectPet = async id => {
     if (petChat.status()?.state === 'running') throw Error('请等宠物回复结束后再切换')
+    await idleXhs()
     const previousState = structuredClone(cycle.state)
     cycle.stop()
     for (let i = 0; cycle.busy && i < 100; i++) await new Promise(r => setTimeout(r, 50))
@@ -560,10 +591,11 @@ export function apply(ctx, config) {
     try { await persistCfg(normalize(next.config, DEFAULTS)) } catch (e) { pets.select(previous); throw e }
     Object.assign(cycle.state, { round:1,completed:0,counts:{video:0,messages:0},done:{},next:{},...next.cycleState,running:false,phase:'paused',error:'',restUntil:0 })
     cycle.commit()
+    Object.assign(xhsCycle.state,{round:1,completed:0,counts:{video:0,messages:0},done:{},next:{},restUntil:0,...readJson(xhsStateFile(),{}),running:false,phase:'paused',error:''});xhsCycle.commit()
     // 切换仅改变角色和设置，账号级去重继续共用；新宠物不会自动启动。
     return id
   }
-  const runDuty = () => cycle.start({ once: true })
+  const runDuty = async () => { await idleXhs();return cycle.start({ once: true }) }
   let lastMaintenance = 0, lastVerify = Date.now(), verifyingTimer = false
   let lastLoginCheck = 0, checkingLogin = false, loginHealth = null
   const checkLogin = async () => {
@@ -575,8 +607,9 @@ export function apply(ctx, config) {
   }
   const timer = setInterval(() => {
     cycle.tick().catch(e => log('循环计时错误：' + e.message))
+    xhsCycle.tick().catch(e=>log('小红书计时错误：'+e.message))
     const now = Date.now()
-    if (now - lastMaintenance > 3600000 && !cycle.busy) { lastMaintenance = now; worker.maintain() }
+    if (now - lastMaintenance > 3600000 && !cycle.busy && !xhsCycle.busy) { lastMaintenance = now; worker.maintain(); xhsWorker.maintain() }
     if (cycle.state.running && hasCredential() && !checkingLogin && now - lastLoginCheck > 300000) {
       lastLoginCheck = now; checkingLogin = true
       checkLogin().finally(() => { checkingLogin = false })
@@ -871,10 +904,43 @@ export function apply(ctx, config) {
   const handle = async (req, res, url) => {
     refreshCfg()
     const path = url.pathname
+    const personalityVersion = () => createHash('sha256').update(JSON.stringify(pets.personality())).digest('hex')
+    if (req.method === 'GET' && path === '/api/bili-duty/pets/personality') return sendJson(res, 200, { ok:true, petId:pets.activeId, personality:pets.personality(), revision:personalityVersion() })
+    if (req.method === 'POST' && path === '/api/bili-duty/pets/personality') {
+      const body = await readBody(req)
+      if (body.petId !== pets.activeId) throw Error('宠物已切换，请刷新')
+      if(cycle.busy||xhsCycle.busy||petChat.status()?.state==='running')throw Error('请等当前操作完成，再保存性格')
+      if (body.revision !== personalityVersion()) throw Error('性格已在其他地方更新，请重新打开后修改')
+      for (const key of ['petName','ownerTitle','petPersonality','petSpeechStyle','petInteractionStyle','petExamples']) if (!String(body.personality?.[key] || '').trim()) throw Error('请填写完整性格档案')
+      const { host } = await persistCfg(personalityOf(body.personality))
+      return sendJson(res,200,{ok:true,personality:pets.personality(),revision:personalityVersion(),host})
+    }
+    if(path.startsWith('/api/bili-duty/xhs/')) {
+      const action=path.slice('/api/bili-duty/xhs/'.length)
+      if(req.method==='GET'&&action==='status')return sendJson(res,200,{ok:true,petId:pets.activeId,config:normalizeXhs(pets.platform('xiaohongshu')),service:xhsService.status(),login:xhsLogin,cycle:{...xhsCycle.state,busy:xhsCycle.busy||xhsStarting},...xhsWorker.status()})
+      if(req.method==='GET'&&action==='logs')return sendJson(res,200,{ok:true,items:xhsWorker.logs(url.searchParams.get('group')==='messages'?'messages':'video')})
+      if(req.method==='GET'&&action==='log-detail')return sendJson(res,200,{ok:true,...xhsWorker.detail(url.searchParams.get('key'))})
+      if(req.method==='POST') {
+        const body=await readBody(req)
+        if(body.petId!==pets.activeId)throw Error('宠物已切换，请刷新')
+        if(action==='config') {
+          pets.updatePlatform('xiaohongshu',xhsPatch(body.config,normalizeXhs(pets.platform('xiaohongshu'))))
+          return sendJson(res,200,{ok:true,config:normalizeXhs(pets.platform('xiaohongshu'))})
+        }
+        if(action==='service/start')return sendJson(res,200,xhsService.start())
+        if(action==='login/check'){xhsLogin=await xhsClient.check();return sendJson(res,200,{ok:true,...xhsLogin,message:xhsLogin.loggedIn?'小红书登录有效':'尚未登录小红书，请获取二维码'})}
+        if(action==='login/qr')return sendJson(res,200,{ok:true,...await xhsClient.qr()})
+        if(action==='logout'){await idleXhs();await xhsClient.logout();xhsLogin={loggedIn:false};return sendJson(res,200,{ok:true,message:'已退出小红书，其他平台账号未改变'})}
+        if(action==='search'){const c=xhsCfg();const items=await xhsClient.search(c.keywords[0]||'大模型 拟人',{sort_by:c.sortBy,publish_time:c.publishTime,note_type:c.noteType});return sendJson(res,200,{ok:true,message:'搜索成功，返回'+items.length+'条；没有调用模型或发表评论',items:items.slice(0,5).map(v=>({id:v.id,title:v.title,author:v.author}))})}
+        if(action==='start'||action==='run')return sendJson(res,200,await startXhs(action==='run'))
+        if(action==='stop'){stopXhs();return sendJson(res,200,{ok:true,message:'已停止小红书任务'})}
+      }
+      return sendJson(res,404,{ok:false,error:'未知小红书操作'})
+    }
     if (req.method === 'GET' && path === '/api/bili-duty/connection') return sendJson(res, 200, { ok: true, ...apiConnection.status() })
     if (req.method === 'POST' && ['/api/bili-duty/connection/save', '/api/bili-duty/connection/test'].includes(path)) {
       try {
-        if (path.endsWith('/save') && (cycle.busy || cycle.state.running || petChat.status()?.state === 'running')) throw Error('请先停止运行并等当前回复完成，再修改 API')
+        if (path.endsWith('/save') && (cycle.busy || cycle.state.running || xhsCycle.busy || xhsCycle.state.running || xhsStarting || petChat.status()?.state === 'running')) throw Error('请先停止运行并等当前回复完成，再修改 API')
         const body = await readBody(req)
         const result = path.endsWith('/test') ? await apiConnection.test(body) : apiConnection.save(body)
         return sendJson(res, 200, { ok: true, ...result })
@@ -971,7 +1037,7 @@ export function apply(ctx, config) {
       const body = await readBody(req)
       const patch = {}
       for (const k of Object.keys(DEFAULTS)) {
-        if (k in body) patch[k] = body[k]
+        if (k in body && !PERSONALITY_KEYS.includes(k)) patch[k] = body[k]
       }
       // ⭐ 范围钳制 + 两份都写（config.json / DSH 原生设置页），统一走 persistCfg —— 见文件上方
       const { clean, host } = await persistCfg(patch)
@@ -980,10 +1046,10 @@ export function apply(ctx, config) {
     }
 
     if (req.method === 'POST' && path === '/api/bili-duty/run') {
-      return sendJson(res, 200, runDuty())
+      return sendJson(res, 200, await runDuty())
     }
 
-    if (req.method === 'POST' && path === '/api/bili-duty/start') return sendJson(res, 200, cycle.start())
+    if (req.method === 'POST' && path === '/api/bili-duty/start') {await idleXhs();return sendJson(res, 200, cycle.start())}
     if (req.method === 'POST' && path === '/api/bili-duty/stop') return sendJson(res, 200, cycle.stop())
 
     // 建 venv + 装依赖（**不等它**：几分钟的活，进度写 install.log）

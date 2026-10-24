@@ -1,9 +1,11 @@
 import { existsSync, mkdirSync, readlinkSync, symlinkSync, unlinkSync, writeFileSync, lstatSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-// Only release builds contain this marker. The working installation is untouched.
+// Both portable releases and existing customized pet installs keep their own
+// Electron state. Never reuse the upstream DSH global data-directory locator.
 export function preparePetPortable(app, root) {
-  if (!existsSync(join(root, 'pet-portable.json'))) return false;
+  const petInstall = existsSync(join(root, '插件', 'dsh-bili-scroll', 'index.js')) && existsSync(join(root, '数据', 'bili-duty'));
+  if (!existsSync(join(root, 'pet-portable.json')) && !petInstall) return false;
   const home = join(root, '数据');
   const state = join(home, 'desktop-shell');
   mkdirSync(state, { recursive: true });

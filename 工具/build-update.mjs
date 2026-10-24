@@ -9,7 +9,12 @@ const label = process.argv[2];
 if (!label || !/^[a-zA-Z0-9._-]+$/.test(label)) throw Error('请指定新的更新标签，例如 2026-10-21-update1');
 const output = join(root, '发布'), name = 'cyber-pet-update-' + label, stage = join(output, name);
 if (existsSync(stage) || existsSync(stage + '.zip')) throw Error('构建目录已存在，请使用新标签');
-const baseline = process.argv[3] || join(output, 'cyber-pet-windows-x64-2026-10-20-preview.zip');
+const baseline = process.argv[3] && !process.argv[3].startsWith('--') ? process.argv[3] : join(output, 'cyber-pet-windows-x64-2026-10-20-preview.zip');
+const notesIndex = process.argv.indexOf('--notes');
+const notesFile = notesIndex >= 0 ? process.argv[notesIndex + 1] : join(root, '工具', label + '.notes.md');
+if (!notesFile) throw Error('请提供 --notes 更新说明文件');
+const releaseNotes = readFileSync(notesFile, 'utf8').replace(/^\ufeff/, '').trim();
+if (!releaseNotes) throw Error('更新说明不能为空');
 const baselineMeta = JSON.parse(readFileSync(baseline.replace(/\.zip$/, '.json'), 'utf8'));
 if (digest(readFileSync(baseline)) !== baselineMeta.sha256) throw Error('完整基包校验失败');
 const python = join(root, 'resources/runtime/x64/primary-runtime/dependencies/python/python.exe');
@@ -72,6 +77,7 @@ writeFileSync(join(stage, '更新.ps1'), '\ufeff' + readFileSync(join(root, '工
 writeFileSync(join(stage, '更新.cmd'), '@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0更新.ps1" "%~1"\r\npause\r\n', 'utf8');
 const instructions = '\ufeff赛博小宠物 累计更新包 ' + label + '\r\n\r\n适用：Windows x64 便携预览包 ' + old.marker.build + ' 及本系列已发布更新。\r\n首次使用请下载完整包，本更新包不能独立运行。\r\n\r\n1. 完全退出赛博小宠物。\r\n2. 将本更新ZIP解压到任意可写文件夹（不要在压缩包内运行）。\r\n3. 双击“更新.cmd”，选择原软件目录，里面应有 DSH Desktop.exe 和 pet-portable.json。\r\n4. 提示更新完成后，从原目录启动 DSH Desktop.exe；更新包文件夹可以删除。\r\n\r\n只替换列出的程序/插件文件，不修改“数据”内宠物、API、B站账号、聊天和日志，不制作备份。\r\n不匹配的版本、被改过的程序文件、损坏的更新包会停止；底层大版本更换请使用完整包。\r\n如更新中断，保持软件关闭，重新运行同一更新包继续完成，完成前不要启动软件。\r\n更新不自动启动软件、不自动开始浏览或发送评论。\r\n\r\n完整包：https://github.com/yan450863-ui/cyber-pet/releases/tag/preview-2026-10-20\r\n仅限许可证允许的非商业用途；上游权利见随包声明。\r\n';
 writeFileSync(join(stage, '更新说明.txt'), instructions);
+writeFileSync(join(stage, '本次更新.md'), releaseNotes + '\n');
 py(`import os,sys,zipfile
 source,target=sys.argv[1:]
 with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
@@ -85,5 +91,6 @@ const meta = { kind: 'update', file: name + '.zip', tag: 'update-' + label, buil
 writeFileSync(stage + '.json', JSON.stringify(meta, null, 2) + '\n');
 writeFileSync(stage + '.manifest.json', JSON.stringify(manifest, null, 2) + '\n');
 writeFileSync(stage + '.zip.sha256', meta.sha256 + '  ' + meta.file + '\n');
-writeFileSync(stage + '.instructions.txt', instructions);
+writeFileSync(stage + '.instructions.txt', instructions + '\r\n本次更新内容与限制：\r\n\r\n' + releaseNotes + '\r\n');
+writeFileSync(stage + '.notes.md', releaseNotes + '\n');
 console.log(JSON.stringify(meta, null, 2));

@@ -10,6 +10,12 @@ export const PET_DEFAULTS = {
   ownerBiliUid: '', mentionOwnerOnLikedVideo: false,
   messageVideoContext: true,
 }
+// Platform accounts, work topics and permissions never belong to personality.
+export const PERSONALITY_KEYS = ['petName','ownerTitle','petPersonality','petSpeechStyle','petInteractionStyle','petExamples','petAliases','petSelfRecognition']
+export function personalityOf(src = {}) {
+  const normalized = normalizePet(src)
+  return Object.fromEntries(PERSONALITY_KEYS.map(key => [key, normalized[key]]))
+}
 export function normalizePet(src = {}) {
   return Object.fromEntries(Object.entries(PET_DEFAULTS).map(([key, base]) => {
     const v = src[key]

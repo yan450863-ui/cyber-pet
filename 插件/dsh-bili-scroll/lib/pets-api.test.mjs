@@ -34,6 +34,19 @@ test('宠物HTTP流程：现有配置迁入、新建/切换隔离，聊天目标
   await request('/pets/select', { id: 'gpt6' })
   assert.equal((await request('/config')).body.config.petName, 'GPT6')
   assert.equal((await request('/config')).body.config.maxReplyChars, 200)
+  const personality=(await request('/pets/personality')).body
+  assert.equal(personality.personality.petName,'GPT6')
+  assert.equal((await request('/pets/personality',{petId:'gpt6',revision:'stale',personality:personality.personality})).code,500)
+  assert.equal((await request('/pets/personality',{petId:'gpt6',revision:personality.revision,personality:{...personality.personality,petSpeechStyle:'跨平台共用的新语气'}})).code,200)
+  await request('/config',{petSpeechStyle:'旧平台页面试图覆盖性格',restMinutes:0})
+  assert.equal((await request('/pets/personality')).body.personality.petSpeechStyle,'跨平台共用的新语气')
+  const xhs=(await request('/xhs/status')).body
+  assert.equal(xhs.config.autoComment,false)
+  assert.equal(xhs.config.replyToComments,false)
+  assert.equal((await request('/xhs/config',{petId:created.body.id,config:{keywords:['错误宠物']}})).code,500)
+  await request('/xhs/config',{petId:'gpt6',config:{keywords:['小红书独立词'],restMinutes:0,autoComment:false}})
+  assert.deepEqual((await request('/xhs/status')).body.config.keywords,['小红书独立词'])
+  assert.equal((await request('/config')).body.config.petName,'GPT6')
   assert.equal((await request('/pets/chat', { petId: created.body.id, text: '错宠物' })).code, 500)
   assert.equal((await request('/pets/logs?group=messages')).body.items.length, 0)
   const prefs=(await request('/browse-options')).body
@@ -46,6 +59,7 @@ test('宠物HTTP流程：现有配置迁入、新建/切换隔离，聊天目标
   assert.equal((await request('/pets/browse-feedback',{petId:'gpt6',key:'video:test',type:'教程',mode:'block'})).code,200)
   assert.equal((await request('/pets/logs?group=video')).body.items[0].feedback.mode,'block')
   await request('/pets/select',{id:created.body.id})
+  assert.notDeepEqual((await request('/xhs/status')).body.config.keywords,['小红书独立词'])
   assert.equal((await request('/config')).body.config.browseFeedback.length,0)
   assert.equal((await request('/pets/browse-feedback',{petId:created.body.id,key:'video:test',type:'教程',mode:'block'})).code,500)
   await request('/pets/select',{id:'gpt6'})
