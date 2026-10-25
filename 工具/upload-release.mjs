@@ -36,15 +36,9 @@ async function api(url, options = {}) {
 }
 const fullNotes=readFileSync(join(root,'工具',label+'.notes.md'),'utf8');
 const body=(isUpdate?readFileSync(prefix+'.notes.md','utf8'):fullNotes)+'\n\nZIP：'+(meta.zipBytes/1024/1024).toFixed(1)+' MiB；解压：'+(meta.unpackedBytes/1024/1024).toFixed(1)+' MiB。\n\nSHA256：'+meta.sha256+'\n\n下载附件 '+meta.file+'；Source code 是源码，不能直接运行。';
-let release;
-const existing = await fetch(base + '/releases/tags/' + tag, { headers });
-if (existing.status === 404) {
-  release = await api(base + '/releases', { method: 'POST', body: JSON.stringify({ tag_name: tag, target_commitish: git(['rev-parse', 'HEAD']), name: isUpdate ? '赛博小宠物 · 累计更新 ' + label : '赛博小宠物 · Windows x64 完整包 '+label, body, draft: true, prerelease: true }), headers: { 'Content-Type': 'application/json' } });
-} else {
-  if (!existing.ok) throw Error('Unable to inspect existing release: ' + existing.status);
-  release = await existing.json();
-  if (!release.draft) throw Error('Release is already published; refusing to modify it');
-}
+let release=(await api(base+'/releases?per_page=100')).find(r=>r.tag_name===tag);
+if(!release)release=await api(base+'/releases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tag_name:tag,target_commitish:git(['rev-parse','HEAD']),name:isUpdate?'赛博小宠物 · 累计更新 '+label:'赛博小宠物 · Windows x64 完整包 '+label,body,draft:true,prerelease:true})});
+else if(!release.draft)throw Error('Release already public; inspect before modifying it');
 console.log('Draft release ready: ' + tag);
 const python = join(root, 'resources/runtime/x64/primary-runtime/dependencies/python/python.exe');
 const quickstart = isUpdate ? prefix + '.instructions.txt' : join(root, '发布', 'QUICKSTART-zh-CN.txt');
@@ -70,9 +64,9 @@ for (const [file, name, type] of [[archive, meta.file, 'application/zip'], [pref
   if (asset.state !== 'uploaded' || asset.size !== size || (asset.digest && asset.digest !== 'sha256:' + localDigest)) throw Error('Uploaded asset verification failed: ' + name);
   console.log('Verified: ' + name);
 }
-release = await api(base + '/releases/' + release.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body, draft: false, prerelease: true, make_latest: 'false' }) });
+release = await api(base + '/releases/' + release.id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag_name:tag,target_commitish:git(['rev-parse','HEAD']),body, draft: false, prerelease: true, make_latest: 'false' }) });
 release = await api(base + '/releases/' + release.id);
 const result = { url: release.html_url, tag: release.tag_name, draft: release.draft, prerelease: release.prerelease, assets: release.assets.map(a => ({ name: a.name, size: a.size, state: a.state, digest: a.digest, url: a.browser_download_url })) };
-if (result.draft || result.assets.length < 3) throw Error('Release did not publish completely');
+if (result.draft || result.tag!==tag || result.assets.length < 3) throw Error('Release did not publish completely');
 writeFileSync(prefix + '.release.json', JSON.stringify(result, null, 2) + '\n');
 console.log(JSON.stringify(result, null, 2));
