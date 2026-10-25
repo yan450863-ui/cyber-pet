@@ -11,3 +11,5 @@
 - 定制说明及许可证见插件内 `README.md`、`LICENSE`；其内部目录保留原生结构。
 
 此处为实际生效源码，不是备份；运行数据保存在 DSH 默认数据目录，具体位置见上级 `ABOUT.md`。
+
+QQ接入源码见 dsh-bili-scroll/lib/qq-client.mjs、lib/qq.mjs；独立抽屉界面在 dsh-bili-scroll/qq-panel.fragment.js。

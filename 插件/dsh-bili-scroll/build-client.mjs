@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 const file = name => fileURLToPath(new URL(name, import.meta.url))
-const source = readFileSync(file('pet-shell.fragment.js'), 'utf8')
+const source = readFileSync(file('expression-settings.fragment.js'), 'utf8') + '\n' + readFileSync(file('qq-panel.fragment.js'), 'utf8') + '\n' + readFileSync(file('pet-shell.fragment.js'), 'utf8')
 const client = readFileSync(file('client.js'), 'utf8')
 const start = client.indexOf('    /* PET SHELL START */')
 const end = client.indexOf('    /* PET SHELL END */')

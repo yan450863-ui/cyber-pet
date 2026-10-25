@@ -22,8 +22,8 @@ export function safePath(root, path, restrict = true) {
 function fileHash(path) { return existsSync(path) ? digest(readFileSync(path)) : null; }
 function assertClosed(root) {
   if (process.platform !== 'win32') return;
-  const script = '$p=[Console]::In.ReadToEnd(); $busy=@(Get-Process -Name "DSH Desktop" -ErrorAction SilentlyContinue | Where-Object {$_.Path -and [IO.Path]::GetFullPath($_.Path) -eq $p}); if($busy.Count){exit 9}';
-  try { execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { input: join(root, 'DSH Desktop.exe'), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }); }
+  const script = '$p=[Console]::In.ReadToEnd(); $busy=@(Get-Process -Name "DSH Desktop","赛博小宠物" -ErrorAction SilentlyContinue | Where-Object {$_.Path -and [IO.Path]::GetFullPath($_.Path) -eq $p}); if($busy.Count){exit 9}';
+  try { execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { input: join(root, existsSync(join(root, '赛博小宠物.exe')) ? '赛博小宠物.exe' : 'DSH Desktop.exe'), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }); }
   catch { throw Error('请先完全退出此目录中的赛博小宠物，再运行更新。'); }
 }
 export function applyUpdate(options) {

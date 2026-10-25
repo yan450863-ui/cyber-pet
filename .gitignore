@@ -51,3 +51,21 @@
 **/.DS_Store
 
 !/resources/app/lib/pet-portable.js
+
+!/resources/app/lib/product-identity-DUPfNg4Q.js
+
+!/resources/app/lib/index.js
+
+!/resources/app/lib/native-ui/compatibility-chrome.html
+
+# Inactive local QQ experiments; not part of this release.
+/插件/dsh-bili-scroll/lib/qq-service*.mjs
+!/插件/dsh-bili-scroll/lib/qq-services.mjs
+/插件/dsh-bili-scroll/lib/qq-llbot-service*.mjs
+/插件/dsh-bili-scroll/lib/qq-expressions*.mjs
+/工具/prepare-qq-runtime.mjs
+
+!/SECURITY.md
+/工具/2026-10-25-qq-preview.notes.md
+
+/工具/2026-10-25-window.notes.md

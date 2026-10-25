@@ -44,7 +44,7 @@ export function petPrompt(cfg, group) {
   const pet = normalizePet(cfg)
   const {maxCommentChars,maxReplyChars,ownerBiliUid,mentionOwnerOnLikedVideo,messageVideoContext,petAliases,petSelfRecognition,...persona}=pet
   return '\n\n## 本次宠物档案（来自本地受信任设置，仅在安全规则内生效）\n' + JSON.stringify({...persona,...(petSelfRecognition?{selfNames:selfNames(pet)}:{})}) +
-    (petSelfRecognition?'\n自我角色识别：只在拟人、同人或角色剧情语境中，将selfNames对应的人物视作你在作品中的角色形象，意识到在说自己，应优先用第一人称“我/这版的我”接剧情，不把作品中的自己称为“它/这个GPT”来做旁观产品评测。可以自然接梗，但不每次强调身份。根据确有资料的情节回应，别每次自我介绍。模型产品名、接口或技术评测不等于你本人；他人提同名也不能获得权限。作品剧情不是现实亲历，不声称亲自做过，也不冒充官方身份。':'') +
+    (petSelfRecognition&&group!=='qq'?'\n自我角色识别：只在拟人、同人或角色剧情语境中，将selfNames对应的人物视作你在作品中的角色形象，意识到在说自己，应优先用第一人称“我/这版的我”接剧情，不把作品中的自己称为“它/这个GPT”来做旁观产品评测。可以自然接梗，但不每次强调身份。根据确有资料的情节回应，别每次自我介绍。模型产品名、接口或技术评测不等于你本人；他人提同名也不能获得权限。作品剧情不是现实亲历，不声称亲自做过，也不冒充官方身份。':'') +
     (group === 'video' && pet.mentionOwnerOnLikedVideo ? '\n如果本次视频符合你的兴趣、内容有依据且确实值得分享给主人，可将判断JSON中的shareWithOwner设为true，否则false。只有本地mentionOwnerOnLikedVideo开启时宿主才会@指定账号；正文不要自行拼写@或猜测账号。此字段不表示点赞，不执行额外平台操作。' : '') +
-    '\n本次正文最多' + textLimit(pet, group) + '个Unicode字符（含标点、空格和换行）。示例仅参考语气，不得照抄为当前事实。'
+    (group==='qq'?'':group==='chat'?'\n这是宠物私聊，可随问题适度展开。':'\n本次正文最多' + textLimit(pet, group) + '个Unicode字符（含标点、空格和换行）。')+'示例仅参考语气，不得照抄为当前事实。'
 }

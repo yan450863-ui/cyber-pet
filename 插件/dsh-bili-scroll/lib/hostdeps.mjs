@@ -16,20 +16,21 @@
  *      **绝不因为一个 import 就让整条插件不激活** ✗✓。
  * ============================================================================
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 /** 插件自己那棵树（`dependencies` 装出来的那份）—— 用模块位置算，别依赖 cwd */
-const SELF_MODULES = join(dirname(fileURLToPath(import.meta.url)), '..', 'node_modules', '@deepseek-ai')
+const SELF_MODULES = join(dirname(realpathSync(fileURLToPath(import.meta.url))), '..', 'node_modules', '@deepseek-ai')
 
 /** 可能藏着宿主 `@deepseek-ai` 包的地方（不写死某一台机器，按可能性排序） */
 export function candidateRoots() {
   const out = []
   const push = (p) => { if (p && !out.includes(p)) out.push(p) }
+  if (process.env.CYBER_PET_ROOT) return [join(process.env.CYBER_PET_ROOT, 'resources', 'app', 'node_modules', '@deepseek-ai')]
   push(process.env.DSH_HOST_MODULES)
-  push(join(dirname(fileURLToPath(import.meta.url)), '../../../resources/app/node_modules/@deepseek-ai'))
+  push(join(dirname(realpathSync(fileURLToPath(import.meta.url))), '../../../resources/app/node_modules/@deepseek-ai'))
 
   const appdata = process.env.APPDATA
   if (appdata) {

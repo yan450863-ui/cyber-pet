@@ -38,7 +38,9 @@
     "selfcheck.mjs",
     "LICENSE",
     "pet-shell.fragment.js",
-    "build-client.mjs"
+    "build-client.mjs",
+    "qq-panel.fragment.js",
+    "expression-settings.fragment.js"
   ],
   "engines": {
     "dsh": ">=0.1.7-rc.1",

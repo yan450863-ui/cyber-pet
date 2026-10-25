@@ -71,7 +71,9 @@ function desktopCliProfileManifestUrl(profileName, environment) {
 * Manual plugin commands and Market operations rely on unified checkpoints.
 */
 async function runDesktopDshCli(environment = process.env, load = (url) => import(url), argv = process.argv, asarProcess = process) {
-	if (!environment.DSH_HOME?.trim()) environment.DSH_HOME = fileURLToPath(new URL("../../../数据/", import.meta.url));
+	environment.DSH_HOME = fileURLToPath(new URL("../../../数据/", import.meta.url));
+  environment.CYBER_PET_HOME = environment.DSH_HOME;
+  environment.CYBER_PET_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 	const profileName = takeDefaultProfile(environment);
 	clearElectronRunAsNode(environment);
 	disableAsarArchiveView(DSH_ENTRY_URL, asarProcess);

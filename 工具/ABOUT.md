@@ -11,3 +11,13 @@
 - `apply-update.test.mjs`：更新/重复执行、数据保留、版本/底层/自改文件拒绝、损坏包、越界、目录链接、运行中、互斥和中断恢复测试；运行 `node --test 工具/apply-update.test.mjs`。
 
 - `2026-10-24-update2.notes.md`：独立性格、小红书接入和目录隔离修复的中文发布说明。
+
+- `portable-isolation.test.mjs`：验证应用标识、自有数据/缓存/临时目录、外部DSH环境覆盖、依赖范围及配置保留。
+
+- `verify-qq-live.mjs`：显式传入 --use-model 后用本机模拟QQ接口及真实已配置模型验证群回复，不向真实QQ群发送；会消耗少量Token。
+- 完整包构建可用 `--reuse-python` 复用已验证的随包Python依赖，仍执行核心依赖导入检查；不会读取个人账号数据。
+
+
+- `qq-window-bridge.cs`：单群QQ的Windows UI Automation本地辅助程序源码，编译输出为resources/qq-window/bridge.exe；不含QQ协议组件。
+
+- `2026-10-25.notes.md`：独立完整包及QQ单群窗口模式的使用、限制和安全边界说明。

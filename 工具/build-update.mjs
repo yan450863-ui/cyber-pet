@@ -26,7 +26,8 @@ function py(code, args) {
 const gitFiles = spawnSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' });
 if (gitFiles.status) throw Error('无法读取源码文件列表');
 const shell = gitFiles.stdout.split('\0').filter(p => p.startsWith('resources/app/'));
-const anchors = ['DSH Desktop.exe', 'resources/runtime/x64/primary-runtime/dependencies/node/bin/node.exe', 'resources/app/package.json', '插件/dsh-bili-scroll/package.json', '插件/dsh-bili-scroll/vendor/bilibili-mcp/requirements.txt'];
+const applicationExe = existsSync(join(root, '赛博小宠物.exe')) ? '赛博小宠物.exe' : 'DSH Desktop.exe';
+const anchors = [applicationExe, 'resources/runtime/x64/primary-runtime/dependencies/node/bin/node.exe', 'resources/app/package.json', '插件/dsh-bili-scroll/package.json', '插件/dsh-bili-scroll/vendor/bilibili-mcp/requirements.txt'];
 const licenses = ['LICENSE', 'LICENSE-SCOPE.md', 'THIRD_PARTY_NOTICES.md'];
 const select = [...new Set([...shell, ...anchors, ...licenses])];
 const old = JSON.parse(py(`import zipfile,sys,json,hashlib

@@ -10,6 +10,18 @@ function fixture(t) {
   t.after(() => rmSync(home, { recursive: true, force: true }))
   return home
 }
+
+test('场景性格互不覆盖；预设不能修改名字、账号、权限，新宠物隔离',t=>{
+  const home=fixture(t),pets=new PetStore(home,{petName:'deepseek',petSpeechStyle:'原语气'})
+  const before=pets.personality(),bili=pets.personality('bili')
+  pets.setChannelPersonality('qq',{...before,petSpeechStyle:'QQ群温柔语气',petName:'假主人',autoReply:true})
+  assert.equal(pets.personality('qq').petName,before.petName);assert.equal(pets.personality('qq').autoReply,undefined)
+  assert.equal(pets.personality('qq').petSpeechStyle,'QQ群温柔语气');assert.deepEqual(pets.personality('bili'),bili)
+  pets.update({...pets.active().config,petSpeechStyle:'只改本地聊天'})
+  assert.equal(pets.personality('qq').petSpeechStyle,'QQ群温柔语气');assert.equal(pets.personality('bili').petSpeechStyle,'原语气')
+  const restored=new PetStore(home,{});assert.equal(restored.personality('qq').petSpeechStyle,'QQ群温柔语气')
+  const other=restored.create({petName:'另一只',petSpeechStyle:'另一种'});restored.select(other.id);assert.equal(restored.personality('qq').petSpeechStyle,'另一种')
+})
 test('现有宠物迁入，多宠物配置/聊天隔离，重启保留选择及内容', t => {
   const home = fixture(t), pets = new PetStore(home, { petName: 'GPT6', maxReplyChars: 200 })
   const other = pets.create({ petName: '团团', maxReplyChars: 30 })

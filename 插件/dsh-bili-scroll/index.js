@@ -2,6 +2,9 @@
 import { READING_DEFAULTS, normalizeReading } from './lib/reading.mjs'
 import { loadHostDeps } from './lib/hostdeps.mjs'
 import { createApiConnection } from './lib/api-connection.mjs'
+import { createQq } from './lib/qq.mjs'
+import {WindowQqClient} from './lib/qq-window.mjs'
+import { createQqServices as createQqService } from './lib/qq-services.mjs'
 
 // ⭐ 这两样从**宿主那棵树**里取（拿不到就退到自己的依赖；再拿不到，defineTool 用本地等价实现）。
 //    起因（2026-10-16 用户递来的完整报告 + 本机复现）：它们是 optional peer，
@@ -10,7 +13,7 @@ const hostDeps = await loadHostDeps()
 const z = hostDeps.z
 const defineTool = hostDeps.defineTool
 import { spawn } from 'node:child_process'
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readdirSync, realpathSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Cycle, CYCLE_DEFAULTS, normalizeCycle } from './lib/cycle.mjs'
@@ -18,6 +21,7 @@ import { createCycleWorker } from './lib/cycle-worker.mjs'
 import { ACTIVITY_DEFAULTS } from './lib/activity.mjs'
 import { BROWSE_DEFAULTS, BROWSE_PRESETS, VIDEO_TYPES, normalizeBrowse, feedbackEntries, presetPatch } from './lib/browse-preferences.mjs'
 import { MEME_DEFAULTS, normalizeMemes, listMemes, importMeme } from './lib/memes.mjs'
+import {STYLE_PRESETS,PERSONALITY_CHANNELS,STYLE_KEYS} from './lib/personality-styles.mjs'
 import { PetStore } from './lib/pets.mjs'
 import { createPetChat } from './lib/pet-chat.mjs'
 import { XhsClient } from './lib/xhs-client.mjs'
@@ -91,7 +95,7 @@ const pyEnv = (extra = {}) => ({
 })
 
 export function apply(ctx, config) {
-  const pluginDir = dirname(fileURLToPath(import.meta.url))
+  const pluginDir = process.env.CYBER_PET_ROOT ? join(process.env.CYBER_PET_ROOT, '插件', 'dsh-bili-scroll') : dirname(realpathSync(fileURLToPath(import.meta.url)))
   // ⭐ 自己的版本号（从 package.json 读，设置页要显示它）
   let myVer = ''
   const myVersion = () => {
@@ -466,6 +470,7 @@ export function apply(ctx, config) {
   //    ⚠️ 装完必须重启 dsh 才生效；⚠️ Windows 上"替换正在运行的插件"可能被文件占用挡住（我们踩过）
   let upgrading = false
   const runUpgrade = () => {
+    if (process.env.CYBER_PET_ROOT) return { ok: false, error: '独立应用请使用赛博小宠物发布包更新，不能安装上游插件覆盖' }
     if (upgrading) return { ok: true, busy: true, log: installLogFile, hint: '正在升级，别重复点' }
     upgrading = true
     appendInstall('\n=== ' + new Date().toISOString() + ' 开始升级（add dsh-bili-scroll）===\n')
@@ -491,7 +496,8 @@ export function apply(ctx, config) {
     const installRoot = join(pluginDir, '..', '..')
     const desktopCli = join(installRoot, 'resources', 'app', 'lib', 'desktop-cli.js')
     const bundledNode = join(installRoot, 'resources', 'runtime', 'x64', 'primary-runtime', 'dependencies', 'node', 'bin', 'node.exe')
-    if (!cfg.dshBin && existsSync(desktopCli) && existsSync(bundledNode)) {
+    if (process.env.CYBER_PET_ROOT && (!existsSync(desktopCli) || !existsSync(bundledNode))) throw Error('本程序内置运行环境不完整，请重新安装赛博小宠物');
+    if ((process.env.CYBER_PET_ROOT || !cfg.dshBin) && existsSync(desktopCli) && existsSync(bundledNode)) {
       return { command: bundledNode, args: [desktopCli], shell: false }
     }
     const explicit = String(cfg.dshBin || '').trim()
@@ -539,7 +545,7 @@ export function apply(ctx, config) {
 
 
   const cycleFile = join(stateDir, 'cycle-state.json')
-  const currentCfg = () => { refreshCfg(); return { ...cfg, ...normalizeCycle(cfg), petId: pets.activeId } }
+  const currentCfg = () => { refreshCfg(); return { ...cfg, ...normalizeCycle(cfg),...pets.personality('bili'), petId: pets.activeId } }
   const worker = createCycleWorker({ home: stateDir, config: currentCfg, call, resolveDsh, log, env: pyEnv, charter: join(pluginDir, 'prompts', 'duty.md') })
   const cycle = new Cycle({
     config: currentCfg,
@@ -552,11 +558,11 @@ export function apply(ctx, config) {
     onError: e => log('循环操作失败，退避后重试：' + e.message),
   })
   const chatAllowed = Object.keys(DEFAULTS).filter(k => !['pythonPath', 'dshBin', 'headlessProfile', 'workspace', 'reportLevel'].includes(k))
-  const petChat = createPetChat({ home: stateDir, pets, config: currentCfg, resolveDsh, env: pyEnv, changeSettings: persistCfg, allowedKeys: chatAllowed })
+  const petChat = createPetChat({ home: stateDir, pets, config:()=>({...currentCfg(),...pets.personality()}), resolveDsh, env: pyEnv, changeSettings: persistCfg, allowedKeys: chatAllowed })
   const xhsHome = join(stateDir,'xiaohongshu'); mkdirSync(xhsHome,{recursive:true})
   const xhsService = createXhsService(stateDir)
   const xhsClient = new XhsClient({connection:xhsService.connection})
-  const xhsCfg = () => ({...currentCfg(),...normalizeXhs(pets.platform('xiaohongshu')),...pets.personality(),petId:pets.activeId})
+  const xhsCfg = () => ({...currentCfg(),...normalizeXhs(pets.platform('xiaohongshu')),...pets.personality('xhs'),petId:pets.activeId})
   const xhsJudge = createSocialJudge({home:xhsHome,dshHome:dirname(stateDir),config:xhsCfg,resolveDsh,env:pyEnv})
   const xhsWorker = createXhsWorker({home:xhsHome,config:xhsCfg,client:xhsClient,judge:xhsJudge})
   const xhsStateFile = () => join(xhsHome,'cycle-'+pets.activeId+'.json')
@@ -577,9 +583,19 @@ export function apply(ctx, config) {
   }
   ctx.effect(()=>()=>{stopXhs();xhsService.stop()},'小红书：停止任务与本地服务')
   ctx.effect(() => () => petChat.dispose(), 'pet-chat: 退出清理')
+  const qqService=createQqService({root:process.env.CYBER_PET_ROOT||join(pluginDir,'../..'),home:join(dirname(stateDir),'qq')})
+  class SelectedQqClient {
+    constructor(options){this.options=options;this.client=null}
+    get ready(){return this.client?.ready||false} get identity(){return this.client?.identity||null} get capabilities(){return this.client?.capabilities} get canRespond(){return this.client?.canRespond} get capture(){return this.client?.capture||null}
+    async connect(){this.disconnect();this.client=new WindowQqClient(this.options,qqService.window);return this.client.connect()}
+    call(...args){return this.client.call(...args)} disconnect(){this.client?.disconnect();this.client=null}
+  }
+  const qq = createQq({home:join(dirname(stateDir),'qq'),pets,personality:()=>pets.personality('qq'),complete:args=>apiConnection.complete(args),Client:SelectedQqClient})
+  ctx.effect(()=>()=>{qq.dispose();qqService.dispose()},'QQ：停止内置组件与群任务')
   const selectPet = async id => {
     if (petChat.status()?.state === 'running') throw Error('请等宠物回复结束后再切换')
     await idleXhs()
+    await qq.idle()
     const previousState = structuredClone(cycle.state)
     cycle.stop()
     for (let i = 0; cycle.busy && i < 100; i++) await new Promise(r => setTimeout(r, 50))
@@ -904,16 +920,44 @@ export function apply(ctx, config) {
   const handle = async (req, res, url) => {
     refreshCfg()
     const path = url.pathname
-    const personalityVersion = () => createHash('sha256').update(JSON.stringify(pets.personality())).digest('hex')
-    if (req.method === 'GET' && path === '/api/bili-duty/pets/personality') return sendJson(res, 200, { ok:true, petId:pets.activeId, personality:pets.personality(), revision:personalityVersion() })
+    if(path.startsWith('/api/bili-duty/qq/')) {
+      const action=path.slice('/api/bili-duty/qq/'.length)
+      if(req.method==='GET'&&action==='status')return sendJson(res,200,{ok:true,...qq.status(),service:await qqService.poll()})
+      if(req.method==='GET'&&action==='conversations')return sendJson(res,200,{ok:true,rooms:qq.conversations()})
+      if(req.method==='GET'&&action==='logs')return sendJson(res,200,{ok:true,items:qq.logs()})
+      if(req.method==='POST') {
+        const body=await readBody(req)
+        if(body.petId!==pets.activeId)throw Error('宠物已切换，请重新打开QQ群抽屉')
+        if(action==='service/window-bind'){qq.stop();const service=await qqService.window.bind(body);qq.saveConfig({config:{...qq.status().config,groups:[String(body.groupId)]}});return sendJson(res,200,{ok:true,service})}
+        if(action==='service/background-launch'){qq.stop();qqService.stop();return sendJson(res,200,{ok:true,service:qqService.window.launchBackground()})}
+        if(action==='service/start')return sendJson(res,200,{ok:true,service:qqService.start()})
+        if(action==='service/check')return sendJson(res,200,{ok:true,service:await qqService.poll()})
+        if(action==='service/stop'){qq.stop();return sendJson(res,200,{ok:true,service:qqService.stop()})}
+        if(action==='service/restart'){qq.stop();return sendJson(res,200,{ok:true,service:qqService.restart()})}
+        if(['check','groups','start'].includes(action)){await qqService.poll();const connection=qqService.connection();const current=qq.status();if(current.connection.url!==connection.url||!current.connection.tokenConfigured)qq.saveConnection(connection)}
+        if(action==='config'){const binding=qqService.window.binding;return sendJson(res,200,{ok:true,...qq.saveConfig({config:{...body.config,groups:binding?[binding.groupId]:[]}})})}
+        if(action==='check')return sendJson(res,200,{ok:true,...await qq.check()})
+        if(action==='start'){const binding=qqService.window.binding;if(!binding)throw Error('请先绑定一个QQ群');qq.saveConfig({config:{...qq.status().config,groups:[binding.groupId]}});qqService.start();try{await qqService.window.bind(binding);await qqService.window.activate();return sendJson(res,200,{ok:true,...await qq.start()})}catch(e){qqService.stop();throw e}}
+        if(action==='stop'){qqService.stop();return sendJson(res,200,{ok:true,...qq.stop()})}
+      }
+      return sendJson(res,404,{ok:false,error:'未知QQ群操作'})
+    }
+    const personalityVersion = channel => createHash('sha256').update(JSON.stringify(pets.personality(channel))).digest('hex')
+    if (req.method === 'GET' && path === '/api/bili-duty/pets/personality') {
+      const channel=url.searchParams.get('channel')||'base';if(!PERSONALITY_CHANNELS.includes(channel))throw Error('未知性格场景')
+      return sendJson(res,200,{ok:true,petId:pets.activeId,personality:pets.personality(channel),base:pets.personality(),presets:STYLE_PRESETS,revision:personalityVersion(channel)})
+    }
     if (req.method === 'POST' && path === '/api/bili-duty/pets/personality') {
-      const body = await readBody(req)
-      if (body.petId !== pets.activeId) throw Error('宠物已切换，请刷新')
-      if(cycle.busy||xhsCycle.busy||petChat.status()?.state==='running')throw Error('请等当前操作完成，再保存性格')
-      if (body.revision !== personalityVersion()) throw Error('性格已在其他地方更新，请重新打开后修改')
-      for (const key of ['petName','ownerTitle','petPersonality','petSpeechStyle','petInteractionStyle','petExamples']) if (!String(body.personality?.[key] || '').trim()) throw Error('请填写完整性格档案')
-      const { host } = await persistCfg(personalityOf(body.personality))
-      return sendJson(res,200,{ok:true,personality:pets.personality(),revision:personalityVersion(),host})
+      const body=await readBody(req),channel=body.channel||'base'
+      if(!PERSONALITY_CHANNELS.includes(channel))throw Error('未知性格场景')
+      if(body.petId!==pets.activeId)throw Error('宠物已切换，请刷新')
+      if(cycle.busy||xhsCycle.busy||qq.status().busy||petChat.status()?.state==='running')throw Error('请等当前操作完成，再保存性格')
+      if(body.revision!==personalityVersion(channel))throw Error('性格已更新，请重新打开后修改')
+      for(const key of STYLE_KEYS)if(!String(body.personality?.[key]||'').trim())throw Error('请填写完整性格档案')
+      let host={ok:true}
+      if(channel==='base'){for(const key of ['petName','ownerTitle'])if(!String(body.personality?.[key]||'').trim())throw Error('请填写名字与主人称呼');({host}=await persistCfg(personalityOf(body.personality)))}
+      else pets.setChannelPersonality(channel,body.inherit?null:body.personality)
+      return sendJson(res,200,{ok:true,personality:pets.personality(channel),revision:personalityVersion(channel),host})
     }
     if(path.startsWith('/api/bili-duty/xhs/')) {
       const action=path.slice('/api/bili-duty/xhs/'.length)
@@ -940,7 +984,7 @@ export function apply(ctx, config) {
     if (req.method === 'GET' && path === '/api/bili-duty/connection') return sendJson(res, 200, { ok: true, ...apiConnection.status() })
     if (req.method === 'POST' && ['/api/bili-duty/connection/save', '/api/bili-duty/connection/test'].includes(path)) {
       try {
-        if (path.endsWith('/save') && (cycle.busy || cycle.state.running || xhsCycle.busy || xhsCycle.state.running || xhsStarting || petChat.status()?.state === 'running')) throw Error('请先停止运行并等当前回复完成，再修改 API')
+        if (path.endsWith('/save') && (cycle.busy || cycle.state.running || xhsCycle.busy || xhsCycle.state.running || xhsStarting || qq.status().running || qq.status().busy || petChat.status()?.state === 'running')) throw Error('请先停止运行并等当前回复完成，再修改 API')
         const body = await readBody(req)
         const result = path.endsWith('/test') ? await apiConnection.test(body) : apiConnection.save(body)
         return sendJson(res, 200, { ok: true, ...result })
@@ -1035,6 +1079,7 @@ export function apply(ctx, config) {
 
     if (req.method === 'POST' && path === '/api/bili-duty/config') {
       const body = await readBody(req)
+      if (body.petId && body.petId !== pets.activeId) throw Error('宠物已切换，请刷新')
       const patch = {}
       for (const k of Object.keys(DEFAULTS)) {
         if (k in body && !PERSONALITY_KEYS.includes(k)) patch[k] = body[k]

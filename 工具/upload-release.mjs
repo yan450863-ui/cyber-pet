@@ -34,30 +34,12 @@ async function api(url, options = {}) {
   if (!response.ok) throw Error(`GitHub HTTP ${response.status}: ${data.message || 'request failed'}`);
   return data;
 }
-const body = isUpdate ? readFileSync(prefix + '.notes.md', 'utf8') + `
-
-更新文件数：${meta.changedFiles}；ZIP大小：${(meta.zipBytes / 1024).toFixed(1)} KB。
-
-SHA256：\`${meta.sha256}\`
-` : `Windows x64 便携预览包。完整解压后双击 **DSH Desktop.exe**，无需另装 Node/Python 或主B站依赖。
-
-1. 首次启动阅读操作说明，内置默认宠物 **deepseek**。
-2. 左下“API连接”填写自己的兼容接口、密钥与模型，保存后重启。
-3. 宠物设置中扫码登录B站，按需要开启自动评论/回复，再手动开始。
-
-压缩包约 **382 MB**，解压约 **1.01 GB**。不包含开发者的个人宠物、账号、密钥、聊天和工作记录；自动评论及回复默认关闭。可选语音转写依赖不包含在主包中。
-
-已完成本机干净目录启动、默认宠物/空白API检查、Python MCP启动及压缩包完整性校验；尚未在另一台全新Windows电脑验收。
-
-SHA256：\`${meta.sha256}\`
-
-请下载下方 **cyber-pet-windows-x64-${label}.zip**；GitHub自动生成的Source code是源码，不是可直接运行的程序。使用说明与校验文件一并提供。
-
-本项目自有新增/修改采用 PolyForm Noncommercial 1.0.0，仅限许可允许的非商业用途；上游MIT权利保留，详见随包许可与第三方声明。`;
+const fullNotes=readFileSync(join(root,'工具',label+'.notes.md'),'utf8');
+const body=(isUpdate?readFileSync(prefix+'.notes.md','utf8'):fullNotes)+'\n\nZIP：'+(meta.zipBytes/1024/1024).toFixed(1)+' MiB；解压：'+(meta.unpackedBytes/1024/1024).toFixed(1)+' MiB。\n\nSHA256：'+meta.sha256+'\n\n下载附件 '+meta.file+'；Source code 是源码，不能直接运行。';
 let release;
 const existing = await fetch(base + '/releases/tags/' + tag, { headers });
 if (existing.status === 404) {
-  release = await api(base + '/releases', { method: 'POST', body: JSON.stringify({ tag_name: tag, target_commitish: git(['rev-parse', 'HEAD']), name: isUpdate ? '赛博小宠物 · 累计更新 ' + label : '赛博小宠物 · Windows x64 便携预览 2026-10-20', body, draft: true, prerelease: true }), headers: { 'Content-Type': 'application/json' } });
+  release = await api(base + '/releases', { method: 'POST', body: JSON.stringify({ tag_name: tag, target_commitish: git(['rev-parse', 'HEAD']), name: isUpdate ? '赛博小宠物 · 累计更新 ' + label : '赛博小宠物 · Windows x64 完整包 '+label, body, draft: true, prerelease: true }), headers: { 'Content-Type': 'application/json' } });
 } else {
   if (!existing.ok) throw Error('Unable to inspect existing release: ' + existing.status);
   release = await existing.json();

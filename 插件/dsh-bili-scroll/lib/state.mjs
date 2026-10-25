@@ -33,6 +33,9 @@ export const WINDOWS = {
  *    我一开始当字符串用（`String(p)`），路径就成了「函数源码 + \bili-duty」⇒ mkdir ENOENT ⇒ apply 抛错 ⇒ 插件不激活。
  */
 export function stateDirOf(ctx) {
+  if (process.env.CYBER_PET_HOME) {
+    const dir = join(process.env.CYBER_PET_HOME, 'bili-duty'); mkdirSync(dir, { recursive: true }); return dir
+  }
   let dir = ''
   try {
     const p = ctx?.get?.('dshHomePath')

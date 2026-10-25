@@ -269,5 +269,6 @@
   },
   "peerDependencies": {
     "electron": "44.0.0"
-  }
+  },
+  "productName": "赛博小宠物"
 }

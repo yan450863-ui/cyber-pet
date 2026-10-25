@@ -95,3 +95,9 @@ SOFTWARE.
 ## Unbundled runtime dependencies
 
 Electron, Chromium, React, DSH core, the desktop dependency tree, Python packages and other runtime assets are not distributed in this repository. Their original licenses apply when obtained separately.
+
+## QQ窗口模式
+
+当前完整包不分发腾讯QQ、NapCat或LuckyLilliaBot。用户自行安装官方QQ；自有窗口组件通过Windows UI Automation读取一个用户指定的群窗口及发送纯文本，不注入QQ、不实现QQ协议。源码为工具/qq-window-bridge.cs。
+
+本机历史试用目录不属于仓库或发布包。发布包保留所携带Electron/Chromium、DSH及其他依赖原有许可声明；本项目非商用条款不重新授权第三方材料。

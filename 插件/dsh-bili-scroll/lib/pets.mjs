@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { PET_DEFAULTS, personalityOf } from './pet-profile.mjs'
 import { upgradeMemeCodes } from './memes.mjs'
+import {STYLE_KEYS,PERSONALITY_CHANNELS} from './personality-styles.mjs'
 
 export const BUILTIN_ID = 'builtin-companion'
 export const builtinPersona = () => ({
@@ -36,6 +37,7 @@ export class PetStore {
     }
     for (const pet of Object.values(this.data.pets)) {
       pet.personality = personalityOf(pet.personality || pet.config)
+      pet.channelPersonalities ||= Object.fromEntries(['qq','bili','xhs'].map(channel=>[channel,Object.fromEntries(STYLE_KEYS.map(k=>[k,pet.personality[k]]))]))
       Object.assign(pet.config, pet.personality)
       pet.platforms ||= {}
     }
@@ -47,7 +49,17 @@ export class PetStore {
   get(id) { if (!Object.hasOwn(this.data.pets, id)) throw Error('宠物不存在'); return this.data.pets[id] }
   save() { writeFileSync(this.file + '.tmp', JSON.stringify(this.data, null, 2)); renameSync(this.file + '.tmp', this.file) }
   update(config) { this.active().personality = personalityOf(config); this.active().config = { ...config, ...this.active().personality }; this.save() }
-  personality() { return { ...this.active().personality } }
+  personality(channel='base') {
+    if(!PERSONALITY_CHANNELS.includes(channel))throw Error('未知性格场景')
+    return {...this.active().personality,...this.active().channelPersonalities?.[channel]}
+  }
+  setChannelPersonality(channel,value) {
+    if(channel==='base'||!PERSONALITY_CHANNELS.includes(channel))throw Error('未知性格场景')
+    const p=this.active();p.channelPersonalities||={}
+    if(value===null)p.channelPersonalities[channel]=Object.fromEntries(STYLE_KEYS.map(k=>[k,p.personality[k]]))
+    else p.channelPersonalities[channel]=Object.fromEntries(STYLE_KEYS.map(k=>[k,String(value[k]||'').trim().slice(0,4000)]))
+    this.save()
+  }
   platform(name) { return structuredClone(this.active().platforms?.[name] || {}) }
   updatePlatform(name, config) { this.active().platforms ||= {}; this.active().platforms[name] = { ...config }; this.save() }
   list() { return Object.values(this.data.pets).sort((a,b) => Number(b.id === BUILTIN_ID)-Number(a.id === BUILTIN_ID)).map(p => ({ id: p.id, builtin: p.id === BUILTIN_ID, name: p.config.petName, personality: p.config.petPersonality, createdAt: p.createdAt })) }
@@ -56,7 +68,8 @@ export class PetStore {
   create(config) {
     if (this.list().length >= 50) throw Error('最多保存50只宠物')
     const id = randomUUID()
-    this.data.pets[id] = { id, personality: personalityOf(config), platforms: {}, config: { ...config, memePack: id }, messages: [], createdAt: Date.now() }
+    const personality=personalityOf(config),channelPersonalities=Object.fromEntries(['qq','bili','xhs'].map(channel=>[channel,Object.fromEntries(STYLE_KEYS.map(k=>[k,personality[k]]))]))
+    this.data.pets[id] = { id, personality, channelPersonalities, platforms: {}, config: { ...config, memePack: id }, messages: [], createdAt: Date.now() }
     this.save(); return this.data.pets[id]
   }
   select(id) { this.get(id); this.data.activeId = id; this.save() }

@@ -4187,7 +4187,7 @@ async function start() {
 		let homeDir;
 		if (safeModePaths !== void 0) homeDir = safeModePaths.homeDir;
 		else {
-			dataDirectoryLocation = resolveDesktopDataDirectory(desktopUserDataDir, fallbackHome, fallbackSource);
+			dataDirectoryLocation = petPortable ? Object.freeze({ homeDir: process.env.CYBER_PET_HOME, previousHome: null, generation: 0, source: 'portable' }) : resolveDesktopDataDirectory(desktopUserDataDir, fallbackHome, fallbackSource);
 			homeDir = dataDirectoryLocation.homeDir;
 		}
 		process.env.DSH_HOME = homeDir;
